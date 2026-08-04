@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Manage Parking Lots — ParkSwift</title><link rel="stylesheet" href="assets/styles.css" /></head>
+<body data-page="manage-lots"><main class="app-shell"><header class="topbar">
+      <a class="brand" href="index.html"><span class="brand-mark">P</span><span>ParkSwift</span></a>
+      <nav class="nav-links"><a data-nav="home" href="index.html">Home</a><a data-nav="map" href="map.html">Map</a><a data-nav="lots" href="lots.html">Parking lots</a><a data-nav="pricing" href="pricing.html">Pricing</a><a data-nav="recommendations" href="recommendations.html">Modules</a><span class="status-pill"><span class="tier-label">Free</span> tier</span></nav>
+    </header>
+<section class="panel page-hero"><p class="eyebrow">Parking registry</p><h1>Add and manage parking lots.</h1><p class="lead">Use this page to add more parking lots to the prototype without touching code. New lots are saved in browser localStorage and appear in the map, lot search, checkout, analytics, and operator pages.</p><div class="actions"><a class="btn primary" href="lots.html">View lots</a><a class="btn secondary" href="map.html">View map</a><button class="btn danger" id="resetLots" type="button">Reset defaults</button></div></section>
+<section class="grid aside">
+  <aside class="panel card form-stack"><h2>Add parking lot</h2><form class="form-stack" id="lotForm">
+    <label>Lot name<input id="lotName" placeholder="e.g. Ikeja City Mall Park" required /></label>
+    <label>Area<input id="lotArea" placeholder="e.g. Ikeja" required /></label>
+    <div class="grid two"><label>Capacity<input id="lotCapacity" type="number" min="1" value="60" /></label><label>Available spaces<input id="lotSpaces" type="number" min="0" value="20" /></label></div>
+    <div class="grid two"><label>Price per hour ₦<input id="lotPrice" type="number" min="0" value="600" /></label><label>Rating<input id="lotRating" type="number" min="1" max="5" step="0.1" value="4.3" /></label></div>
+    <div class="grid two"><label>Walk distance metres<input id="lotWalk" type="number" min="0" value="350" /></label><label>Drive time minutes<input id="lotDrive" type="number" min="1" value="8" /></label></div>
+    <div class="grid two"><label>Map X %<input id="lotMapX" type="number" min="8" max="92" placeholder="auto" /></label><label>Map Y %<input id="lotMapY" type="number" min="8" max="92" placeholder="auto" /></label></div>
+    <label><span><input type="checkbox" id="lotEv" /> EV charging</span></label><label><span><input type="checkbox" id="lotAccessible" checked /> Accessible bays</span></label><label><span><input type="checkbox" id="lotBike" checked /> Motorbike support</span></label><label><span><input type="checkbox" id="lotCovered" /> Covered parking</span></label>
+    <button class="btn primary" type="submit">Add parking lot</button>
+  </form></aside>
+  <article class="panel card"><div class="card-header"><div><h2>Current registry</h2><p class="muted">This is the active browser-side parking registry.</p></div><button class="btn secondary" id="copyLotsJson" type="button">Copy JSON</button></div><div class="kpi-grid" id="manageLotsKpis"></div><div style="margin-top:16px" id="manageLotsTable"></div></article>
+</section>
+<section class="panel card" style="margin-top:20px"><h2>Permanent data export</h2><p class="muted">To make added lots permanent for every visitor, copy this JSON into <code>window.PARKSWIFT_INITIAL_LOTS</code> in <code>assets/data.js</code>.</p><pre class="code-block" id="lotsJson"></pre></section>
+<nav class="bottom-nav"><a data-nav="home" href="index.html">Home</a><a data-nav="map" href="map.html">Map</a><a data-nav="lots" href="lots.html">Lots</a><a data-nav="pricing" href="pricing.html">Pricing</a></nav></main><script src="assets/env.js"></script><script src="assets/data.js"></script><script src="assets/app.js"></script></body></html>

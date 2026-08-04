@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Investor Pitch — ParkSwift</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+  <style>
+    .pitch-slide { min-height: 78vh; display:grid; align-items:center; margin-bottom:24px; padding:32px; overflow:hidden; position:relative; }
+    .pitch-slide h2 { font-size: clamp(2rem, 5vw, 4.5rem); line-height:.95; margin-bottom:16px; }
+    .pitch-slide p { font-size:1.08rem; line-height:1.65; }
+    .media-hero { width:100%; border-radius:24px; border:1px solid var(--line); box-shadow:var(--shadow); background:#081523; }
+    .big-number { font-size: clamp(2.4rem, 8vw, 5.5rem); font-weight:950; letter-spacing:-.07em; color:#9dffca; line-height:1; }
+    .budget-table td strong { color:#eef6ff; }
+    .ask-box { background:linear-gradient(135deg, rgba(57,217,138,.18), rgba(77,184,255,.12)); border:1px solid rgba(57,217,138,.35); }
+    .thumbnail-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .thumbnail-grid img { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:18px; border:1px solid var(--line); }
+    @media(max-width:800px){ .pitch-slide { min-height:auto; padding:18px; } .thumbnail-grid{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body data-page="recommendations">
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="index.html"><span class="brand-mark">P</span><span>ParkSwift</span></a>
+      <nav class="nav-links"><a href="index.html">App</a><a href="phases.html">Phases</a><a href="recommendations.html">Modules</a><a href="manage-lots.html">Lots</a><span class="status-pill">Investor pitch</span></nav>
+    </header>
+
+    <section class="panel pitch-slide">
+      <div class="grid two" style="align-items:center">
+        <div>
+          <p class="eyebrow">Pre-seed investor pitch</p>
+          <h1>ParkSwift: find, reserve, and pay for parking before arrival.</h1>
+          <p class="lead">A smart parking finder for African cities, starting with Lagos: live availability, mobile reservation, payments, premium routing, and a roadmap toward sovereign mobility infrastructure.</p>
+          <div class="actions"><a class="btn primary" href="media/parkswift-investor-promo.gif">Watch promo GIF</a><a class="btn secondary" href="media/parkswift-product-demo.gif">Watch product demo GIF</a><a class="btn secondary" href="index.html">Open prototype</a></div>
+        </div>
+        <img class="media-hero" src="media/hero-smart-parking-lagos.png" alt="Smart parking in Lagos concept" />
+      </div>
+    </section>
+
+    <section class="panel pitch-slide">
+      <div class="grid two" style="align-items:center">
+        <div>
+          <p class="eyebrow">The problem</p>
+          <h2>Drivers lose time, fuel, and patience looking for parking.</h2>
+          <ul class="feature-list">
+            <li>Urban drivers circle streets searching for available spaces.</li>
+            <li>Parking operators lack real-time digital demand visibility.</li>
+            <li>Cities lose road capacity to avoidable cruising and congestion.</li>
+            <li>Payments, permits, enforcement, and data are fragmented.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="big-number">10–20 min</div>
+          <p class="muted">Typical avoidable search-time target ParkSwift aims to reduce per parking trip during peak periods.</p>
+          <div class="big-number">₦</div>
+          <p class="muted">Revenue opportunity across booking fees, subscriptions, operator SaaS, payments, fleet accounts, and data products.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel pitch-slide">
+      <div class="grid two" style="align-items:center">
+        <img class="media-hero" src="media/parkswift-product-demo.gif" alt="Animated product demo" />
+        <div>
+          <p class="eyebrow">The solution</p>
+          <h2>A mobile-first parking marketplace with live availability and payments.</h2>
+          <ul class="feature-list">
+            <li>Search nearby parking by destination, vehicle type, and walking distance.</li>
+            <li>See availability, price, distance, accessibility, EV, and congestion signals.</li>
+            <li>Reserve and pay before arrival.</li>
+            <li>Use Free for basic discovery or Premium for heatmaps, AI pick, alerts, and priority holds.</li>
+          </ul>
+          <div class="actions"><a class="btn primary" href="lots.html">Try lot search</a><a class="btn secondary" href="checkout.html">Try checkout</a></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel pitch-slide">
+      <div>
+        <p class="eyebrow">Product phases</p>
+        <h2>Start with Phase 0 and Phase 1. Expand into sovereign mobility later.</h2>
+        <div class="grid three">
+          <article class="card"><span class="badge premium">Phase 0</span><h3>MVP parking finder</h3><p class="muted">Mobile app, live spaces, map, reservations, and payment.</p></article>
+          <article class="card"><span class="badge premium">Phase 1</span><h3>Commercial tiers</h3><p class="muted">Free/Premium features, revenue model, tier gating, and launch-ready UX.</p></article>
+          <article class="card flag-off"><span class="badge low">Later</span><h3>Sovereign platform</h3><p class="muted">IoT, operators, permits, data exchange, public control plane, and federation.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel pitch-slide">
+      <div class="grid two" style="align-items:center">
+        <div>
+          <p class="eyebrow">Business model</p>
+          <h2>Multiple revenue lines from day one.</h2>
+          <ul class="feature-list">
+            <li>Consumer reservation/service fee on successful bookings.</li>
+            <li>Premium subscription for commuters and power users.</li>
+            <li>Operator SaaS dashboard for parking lot owners.</li>
+            <li>Corporate fleet wallets and monthly invoices.</li>
+            <li>Future API, city, permit, curb, and analytics revenue.</li>
+          </ul>
+        </div>
+        <img class="media-hero" src="media/operator-dashboard.png" alt="Operator dashboard concept" />
+      </div>
+    </section>
+
+    <section class="panel pitch-slide">
+      <div>
+        <p class="eyebrow">Phase 0–1 commencement budget</p>
+        <h2>Recommended starting capital: <span style="color:#9dffca">₦125 million</span>.</h2>
+        <p class="lead">Recommended range: <strong>₦95 million–₦155 million</strong> for a 5–6 month Lagos pilot. A lean prototype can start lower, but ₦125 million gives enough room for product, integrations, pilot operations, marketing, and contingency.</p>
+        <table class="data-table budget-table">
+          <thead><tr><th>Budget item</th><th>Purpose</th><th>Proposed amount</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Product & engineering</strong></td><td>Mobile/PWA app, backend, admin, maps, checkout, tiering, QA</td><td>₦38m</td></tr>
+            <tr><td><strong>Design, UX research & testing</strong></td><td>Mobile UX, usability testing, brand assets, accessibility review</td><td>₦9m</td></tr>
+            <tr><td><strong>Cloud, tools & security</strong></td><td>Hosting, monitoring, analytics, backups, security hardening</td><td>₦10m</td></tr>
+            <tr><td><strong>Parking data & pilot partnerships</strong></td><td>Lot onboarding, operator incentives, data verification, basic sensors/API prep</td><td>₦20m</td></tr>
+            <tr><td><strong>Payments, legal & compliance</strong></td><td>Payment integration, agreements, privacy policy, terms, incorporation/legal support</td><td>₦11m</td></tr>
+            <tr><td><strong>Launch marketing & customer acquisition</strong></td><td>Driver acquisition, operator sales, campus/office pilots, creative, PR</td><td>₦16m</td></tr>
+            <tr><td><strong>Operations & support</strong></td><td>Customer support, field onboarding, transport, admin, pilot coordination</td><td>₦9m</td></tr>
+            <tr><td><strong>Contingency</strong></td><td>FX movement, delays, extra integrations, unexpected pilot costs</td><td>₦12m</td></tr>
+            <tr><td><strong>Total recommended commencement capital</strong></td><td>Phase 0 + Phase 1 pilot</td><td><strong>₦125m</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel pitch-slide ask-box">
+      <div class="grid two" style="align-items:center">
+        <div>
+          <p class="eyebrow">Investment ask</p>
+          <h2>Raise ₦125m to launch the first commercial pilot.</h2>
+          <p class="lead">Use of funds: build a production-grade Phase 0–1 product, onboard the first parking operators, validate payments and premium conversion, and collect data for the next fundraising round.</p>
+          <ul class="feature-list">
+            <li>5–6 month runway for Phase 0 and Phase 1.</li>
+            <li>Target first city: Lagos.</li>
+            <li>Initial focus: high-density business, mall, campus, and event zones.</li>
+            <li>Milestone for next round: active parking supply, repeat users, completed reservations, and operator revenue.</li>
+          </ul>
+        </div>
+        <img class="media-hero" src="media/parkswift-investor-promo.gif" alt="Investor promo animation" />
+      </div>
+    </section>
+
+    <section class="panel pitch-slide">
+      <div>
+        <p class="eyebrow">Media assets</p>
+        <h2>Pictures and video-style animations included.</h2>
+        <div class="thumbnail-grid">
+          <a href="media/hero-smart-parking-lagos.png"><img src="media/hero-smart-parking-lagos.png" alt="Smart parking Lagos" /></a>
+          <a href="media/operator-dashboard.png"><img src="media/operator-dashboard.png" alt="Operator dashboard" /></a>
+          <a href="media/sovereign-mobility-platform.png"><img src="media/sovereign-mobility-platform.png" alt="Sovereign mobility platform" /></a>
+          <a href="media/parkswift-investor-promo.gif"><img src="media/parkswift-investor-promo.gif" alt="Investor promo GIF" /></a>
+          <a href="media/parkswift-product-demo.gif"><img src="media/parkswift-product-demo.gif" alt="Product demo GIF" /></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel card">
+      <h2>Suggested 60-second investor video script</h2>
+      <div class="timeline" style="margin-top:14px">
+        <div class="timeline-item"><div class="timeline-time">0–10s</div><div><strong>Problem</strong><p class="muted">“In Lagos and other fast-growing cities, drivers waste time and fuel searching for parking while operators lack real-time demand visibility.”</p></div></div>
+        <div class="timeline-item"><div class="timeline-time">10–25s</div><div><strong>Solution</strong><p class="muted">“ParkSwift lets drivers find, reserve, and pay before arrival using live availability, smart filters, and mobile checkout.”</p></div></div>
+        <div class="timeline-item"><div class="timeline-time">25–40s</div><div><strong>Business</strong><p class="muted">“We monetize through booking fees, Premium subscriptions, operator SaaS, corporate wallets, and future city mobility APIs.”</p></div></div>
+        <div class="timeline-item"><div class="timeline-time">40–55s</div><div><strong>Expansion</strong><p class="muted">“Starting with parking, ParkSwift can grow into curb, EV, permits, events, data exchange, and sovereign mobility infrastructure.”</p></div></div>
+        <div class="timeline-item"><div class="timeline-time">55–60s</div><div><strong>Ask</strong><p class="muted">“We are seeking ₦125 million to launch Phase 0 and Phase 1: the commercial parking finder pilot in Lagos.”</p></div></div>
+      </div>
+    </section>
+
+    <nav class="bottom-nav"><a href="index.html">Home</a><a href="phases.html">Phases</a><a href="recommendations.html">Modules</a><a href="pricing.html">Pricing</a></nav>
+  </main>
+  <script src="assets/env.js"></script><script src="assets/data.js"></script><script src="assets/app.js"></script>
+</body>
+</html>

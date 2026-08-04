@@ -1,0 +1,7 @@
+backend/db.json
+backend/uploads
+.env
+.env.*
+.vercel
+node_modules
+.DS_Store

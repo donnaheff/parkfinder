@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Map — ParkSwift</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body data-page="map">
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="index.html"><span class="brand-mark">P</span><span>ParkSwift</span></a>
+      <nav class="nav-links"><a data-nav="home" href="index.html">Home</a><a data-nav="map" href="map.html">Map</a><a data-nav="lots" href="lots.html">Parking lots</a><a data-nav="pricing" href="pricing.html">Pricing</a><a data-nav="recommendations" href="recommendations.html">Modules</a><span class="status-pill"><span class="tier-label">Free</span> tier</span></nav>
+    </header>
+
+    <section class="panel page-hero">
+      <p class="eyebrow">Satellite-style view</p>
+      <h1>Live parking map</h1>
+      <p class="lead">Tap a marker to inspect availability. Free users get basic live markers; Premium users can unlock congestion heatmaps and optimized routes.</p>
+      <div class="actions"><button class="btn secondary" id="simulateBtn">Simulate live update</button><button class="btn blue" id="heatmapToggle">Premium heatmap</button><a class="btn primary" href="lots.html">Open parking lots</a><span class="pill"><span class="live-dot"></span><span id="clock">Syncing…</span></span></div>
+    </section>
+
+    <section class="grid aside">
+      <article class="panel map-shell">
+        <div class="map-head"><div><h2>City sensor grid</h2><p class="muted" id="mapSubtitle">Tap a marker to view spaces</p></div><span class="pill"><span class="live-dot"></span> updating</span></div>
+        <div class="map-wrap" id="mapWrap" aria-label="Satellite style city parking map">
+          <svg class="city-map" viewBox="0 0 760 520" role="img" aria-label="Road map with traffic and fastest route">
+            <path class="road major" d="M45 410 C170 330 255 340 365 270 S570 120 720 100" />
+            <path class="road" d="M88 80 C185 160 268 162 356 145 C480 120 560 172 674 250" />
+            <path class="road" d="M118 490 C165 390 210 295 260 190 C306 96 346 54 405 32" />
+            <path class="road" d="M475 500 C450 395 433 320 458 230 C483 145 528 90 615 40" />
+            <path class="road" d="M36 270 C126 240 215 248 305 300 C414 360 531 390 706 345" />
+            <path class="traffic" d="M420 360 C500 390 585 384 674 352" />
+            <path class="traffic" d="M504 150 C548 172 594 205 650 240" />
+            <path class="route" d="M92 420 C190 350 275 330 360 270 C450 202 530 140 633 102" />
+            <circle cx="92" cy="420" r="10" fill="#4db8ff" opacity=".95" />
+            <text x="112" y="425" fill="#cce8ff" font-size="14" font-weight="700">You</text>
+          </svg>
+          <div class="heatmap" id="heatmap"></div>
+          <div class="map-legend"><div class="legend-item"><span class="swatch"></span> Plenty of spaces</div><div class="legend-item"><span class="swatch warn"></span> Filling fast</div><div class="legend-item"><span class="swatch danger"></span> Full/congested</div><div class="legend-item"><span class="swatch traffic"></span> traffic hotspot</div></div>
+        </div>
+      </article>
+      <aside class="panel card">
+        <h2>Selected lot</h2>
+        <p class="muted premium-lock-note">Premium unlocks heatmaps, route congestion avoidance, and priority holds.</p>
+        <div id="selectedLot"></div>
+      </aside>
+    </section>
+
+    <nav class="bottom-nav"><a data-nav="home" href="index.html">Home</a><a data-nav="map" href="map.html">Map</a><a data-nav="lots" href="lots.html">Lots</a><a data-nav="pricing" href="pricing.html">Pricing</a></nav>
+  </main>
+  <script src="assets/env.js"></script><script src="assets/data.js"></script><script src="assets/app.js"></script>
+</body>
+</html>

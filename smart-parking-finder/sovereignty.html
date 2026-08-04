@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sovereign Platform — ParkSwift</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body data-page="sovereignty" data-feature-flag="FEATURE_SOVEREIGN_CONTROL_PLANE">
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="index.html"><span class="brand-mark">P</span><span>ParkSwift</span></a>
+      <nav class="nav-links"><a data-nav="home" href="index.html">Home</a><a data-nav="map" href="map.html">Map</a><a data-nav="lots" href="lots.html">Parking lots</a><a data-nav="pricing" href="pricing.html">Pricing</a><a data-nav="recommendations" href="recommendations.html">Modules</a><span class="status-pill"><span class="tier-label">Free</span> tier</span></nav>
+    </header>
+
+    <section class="panel page-hero">
+      <p class="eyebrow">Sovereign mobility platform</p>
+      <h1>Recommendations for a sovereign smart-parking platform.</h1>
+      <p class="lead">These recommendations help ParkSwift evolve from an app into a nationally controlled mobility infrastructure layer with local data, local rules, open standards, and public-sector governance.</p>
+      <div class="page-links"><a href="recommendations.html">Module hub</a><a href="marketplace.html">APIs</a><a href="security.html">Security</a><a href="privacy.html">Privacy</a><a href="operator.html">Operator</a></div>
+    </section>
+
+    <section class="panel card">
+      <div class="card-header"><div><h2>Sovereign platform recommendations</h2><p class="muted">Visible as guidance even while the sovereign control-plane prototype is disabled by .env.</p></div><span class="badge premium">Governance roadmap</span></div>
+      <div class="sovereign-stack" id="sovereignRecommendationList"></div>
+    </section>
+
+    <div data-feature-content>
+      <section class="grid aside" style="margin-top:20px">
+        <article class="panel card">
+          <h2>Sovereign control plane prototype</h2>
+          <div class="switch-row"><div><strong>Emergency curb override</strong><div class="muted small">City can reserve curb and parking capacity for emergency response.</div></div><button class="btn secondary">Activate</button></div>
+          <div class="switch-row"><div><strong>Local data residency enforcement</strong><div class="muted small">Block exports outside approved jurisdictions.</div></div><span class="badge">On</span></div>
+          <div class="switch-row"><div><strong>Open standard export</strong><div class="muted small">Export parking, curb, permit, and analytics schemas.</div></div><button class="btn secondary">Export</button></div>
+          <div class="switch-row"><div><strong>Public audit package</strong><div class="muted small">Generate audit log bundle for regulators.</div></div><button class="btn secondary">Generate</button></div>
+        </article>
+        <aside class="panel card">
+          <h2>.env feature flags</h2>
+          <p class="muted">All new sovereign and next-stage modules are currently disabled from <code>.env</code>.</p>
+          <pre class="code-block" id="envFlags"></pre>
+        </aside>
+      </section>
+    </div>
+
+    <nav class="bottom-nav"><a data-nav="home" href="index.html">Home</a><a data-nav="map" href="map.html">Map</a><a data-nav="lots" href="lots.html">Lots</a><a data-nav="pricing" href="pricing.html">Pricing</a></nav>
+  </main>
+  <script src="assets/env.js"></script><script src="assets/data.js"></script><script src="assets/app.js"></script>
+</body>
+</html>

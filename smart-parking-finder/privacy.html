@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Analytics — ParkSwift</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body data-page="privacy">
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="index.html"><span class="brand-mark">P</span><span>ParkSwift</span></a>
+      <nav class="nav-links"><a data-nav="home" href="index.html">Home</a><a data-nav="map" href="map.html">Map</a><a data-nav="lots" href="lots.html">Parking lots</a><a data-nav="pricing" href="pricing.html">Pricing</a><a data-nav="recommendations" href="recommendations.html">Modules</a><span class="status-pill"><span class="tier-label">Free</span> tier</span></nav>
+    </header>
+
+    <section class="panel page-hero">
+      <p class="eyebrow">Privacy by design</p>
+      <h1>Aggregated city analytics with privacy controls</h1>
+      <p class="lead">Help cities and operators understand parking demand without exposing individual drivers, plates, payment identifiers, or raw location history.</p>
+      <div class="page-links"><a href="recommendations.html">All modules</a><a href="sensors.html">IoT feeds</a><a href="predictions.html">Predictions</a><a href="operator.html">Operator</a><a href="permits.html">Permits</a><a href="accessibility.html">Accessibility</a><a href="enforcement.html">Enforcement</a><a href="corporate.html">Corporate</a><a href="privacy.html">Privacy</a></div>
+    </section>
+
+    <section class="grid aside">
+      <article class="panel card">
+        <div class="card-header"><div><h2>Privacy-safe analytics</h2><p class="muted">Demand is grouped by zone and anonymized before display.</p></div><button class="btn primary" id="anonymizeNow">Run privacy pass</button></div>
+        <div class="kpi-grid" id="privacyKpis"></div>
+        <div style="margin-top:16px" id="privacyAnalytics"></div>
+      </article>
+      <aside class="panel card">
+        <h2>Privacy controls</h2>
+        <div class="switch-row"><div><strong>Aggregation threshold</strong><div class="muted small">Hide groups smaller than 10 sessions.</div></div><span class="badge">On</span></div>
+        <div class="switch-row"><div><strong>Tokenized payment IDs</strong><div class="muted small">No raw card or wallet IDs in reports.</div></div><span class="badge">On</span></div>
+        <div class="switch-row"><div><strong>Retention limit</strong><div class="muted small">Default analytics retention is 30 days.</div></div><span class="badge">30d</span></div>
+        <h3 style="margin-top:16px">Audit checklist</h3>
+        <ul class="feature-list" id="privacyAudit"></ul>
+      </aside>
+    </section>
+
+    <nav class="bottom-nav"><a data-nav="home" href="index.html">Home</a><a data-nav="map" href="map.html">Map</a><a data-nav="lots" href="lots.html">Lots</a><a data-nav="pricing" href="pricing.html">Pricing</a></nav>
+  </main>
+  <script src="assets/env.js"></script><script src="assets/data.js"></script><script src="assets/app.js"></script>
+</body>
+</html>
