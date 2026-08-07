@@ -1,30 +1,45 @@
-# Deploy ParkSwift Lite to Vercel
+# Deploy ParkSwift to Vercel
 
-This project is now Vercel-ready as a static POC deployment.
+This project is a Next.js app (App Router, fully client-rendered — `output: 'export'`) plus a set of
+standalone Vercel serverless functions in `api/*` backed by Supabase. Marketing/pitch pages remain
+static HTML served from `public/`.
 
 ## What will deploy
 
-Default route:
+Core app routes (Next.js, client-rendered):
 
 ```text
-/ -> poc.html
+/          Home — live search
+/map       Live parking map
+/lots      Full lot list with filters
+/areas     Neighborhood rollup
+/updates   Community status reports
+/owner     Owner registration + lot management
+/operator  Operator occupancy console
+/admin     Admin verification queue
 ```
 
-Extra routes:
+Marketing/static routes (served from `public/`, unchanged):
 
 ```text
-/poc -> poc.html
-/app -> index.html
-/pitch -> investor-pitch.html
+/pitch  -> investor-pitch.html
 /phases -> phases.html
-/backend-demo -> backend-connected.html
+... plus every other *.html file in public/, at its own filename
+```
+
+Legacy URLs redirect to their Next.js equivalents:
+
+```text
+/poc          -> /
+/app          -> /
+/backend-demo -> /admin
 ```
 
 ## Backend note
 
-The project now includes two backend options:
+The project includes two backend options:
 
-1. `backend/server.js` — local/VPS JSON-file demo backend.
+1. `backend/server.js` — local/VPS JSON-file demo backend (same API contract as `api/*`).
 2. `api/*` — Vercel serverless API routes backed by Supabase.
 
 For Vercel production, use the `api/*` routes with Supabase environment variables. See `VERCEL_SUPABASE_SETUP.md`.
@@ -35,6 +50,7 @@ From this folder:
 
 ```bash
 cd smart-parking-finder
+npm install
 npx vercel login
 npx vercel
 ```
@@ -51,27 +67,21 @@ npx vercel --prod
 2. Go to Vercel Dashboard.
 3. Click **Add New Project**.
 4. Import the GitHub repository.
-5. Set framework preset to **Other**.
-6. Leave build command empty or use:
+5. Framework preset **Next.js** is auto-detected.
+6. Build command: `npm run build` (default).
+7. Deploy.
+
+## Local development
 
 ```bash
-npm run vercel-build
+cd smart-parking-finder
+npm install
+npm run dev
 ```
 
-7. Set output directory to the project root or leave blank.
-8. Deploy.
-
-## Google AdSense note
-
-Before public production deployment, replace these placeholders in `poc.html`:
-
-```text
-ca-pub-REPLACE_WITH_YOUR_PUBLISHER_ID
-REPLACE_WITH_FEED_SLOT_ID
-REPLACE_WITH_SIDEBAR_SLOT_ID
-```
-
-Google ads will only show after your AdSense account/domain is approved.
+This starts the Next.js dev server. Point it at a running API (either `backend/server.js` locally, or
+the deployed `api/*` routes) by setting `NEXT_PUBLIC_API_BASE` — it defaults to same-origin, which is
+what production uses.
 
 ## Vercel backend environment variables
 
@@ -92,4 +102,11 @@ For local demos without Supabase:
 ```bash
 cd smart-parking-finder/backend
 PORT=8787 ADMIN_TOKEN=change-this-token node server.js
+```
+
+Then, in another terminal:
+
+```bash
+cd smart-parking-finder
+NEXT_PUBLIC_API_BASE=http://localhost:8787 npm run dev
 ```

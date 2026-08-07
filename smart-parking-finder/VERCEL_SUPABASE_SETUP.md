@@ -5,10 +5,9 @@ The project now includes Vercel serverless API routes in `api/`.
 ## Architecture
 
 ```text
-Vercel static frontend
-  ├─ poc.html
-  ├─ backend-connected.html
-  └─ other static pages
+Next.js app (client-rendered, output: 'export')
+  ├─ / /map /lots /areas /updates /owner /operator /admin
+  └─ public/*.html — marketing/pitch pages, unchanged
 
 Vercel serverless API
   └─ /api/*
@@ -64,7 +63,7 @@ After deployment, test:
 ```text
 https://YOUR-APP.vercel.app/api/health
 https://YOUR-APP.vercel.app/api/parks
-https://YOUR-APP.vercel.app/backend-connected.html
+https://YOUR-APP.vercel.app/admin
 ```
 
 ## 5. Admin moderation token
@@ -75,7 +74,9 @@ Admin endpoints require:
 x-admin-token: YOUR_ADMIN_TOKEN
 ```
 
-The `backend-connected.html` demo currently uses `dev-admin-token` in browser code. For production, change it to your real token or replace this with proper admin authentication.
+The `/admin` page prompts for this token at runtime and stores it in `localStorage` on the admin's own
+browser — it is never hardcoded in the client bundle. For production, still replace the single shared
+token with proper admin authentication (see hardening list below).
 
 ## Serverless API routes included
 
@@ -133,4 +134,4 @@ Before a public launch, add:
 - Row-level security policies
 - Audit logging UI
 - Error monitoring
-- Domain and AdSense approval
+- Custom domain setup

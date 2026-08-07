@@ -2,11 +2,12 @@
   "name": "parkswift-lite",
   "version": "0.1.0",
   "private": true,
-  "description": "ParkSwift Lite lean park finder POC and investor demo.",
+  "description": "ParkSwift smart parking finder — Next.js client-rendered app backed by the Supabase-powered API.",
   "scripts": {
-    "start": "node backend/server.js",
-    "dev": "node backend/server.js",
-    "vercel-build": "node -e \"console.log('Static ParkSwift deployment: no build step required')\""
+    "dev": "next dev",
+    "build": "next build",
+    "start": "npx --yes serve@latest out -l 3000",
+    "legacy-backend": "node backend/server.js"
   },
   "keywords": [
     "parking",
@@ -14,5 +15,10 @@
     "pwa",
     "smart-city"
   ],
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "next": "^16.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  }
 }

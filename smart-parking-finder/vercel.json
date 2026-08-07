@@ -3,12 +3,13 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/", "destination": "/poc.html" },
-    { "source": "/poc", "destination": "/poc.html" },
-    { "source": "/app", "destination": "/index.html" },
     { "source": "/pitch", "destination": "/investor-pitch.html" },
-    { "source": "/phases", "destination": "/phases.html" },
-    { "source": "/backend-demo", "destination": "/backend-connected.html" }
+    { "source": "/phases", "destination": "/phases.html" }
+  ],
+  "redirects": [
+    { "source": "/poc", "destination": "/", "permanent": true },
+    { "source": "/app", "destination": "/", "permanent": true },
+    { "source": "/backend-demo", "destination": "/admin", "permanent": true }
   ],
   "headers": [
     {
