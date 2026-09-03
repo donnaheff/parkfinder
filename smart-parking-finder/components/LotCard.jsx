@@ -2,7 +2,7 @@
 
 import { amenityChips, availabilityClass, availabilityText, occupancyRatio, directionsUrl } from '../lib/format';
 
-export default function LotCard({ lot, compact = false, saved = false, onSave, onRoute }) {
+export default function LotCard({ lot, compact = false, saved = false, onSave, onRoute, liveWalkMinutes }) {
   const cls = availabilityClass(lot);
   const ratio = occupancyRatio(lot);
   const chips = amenityChips(lot.amenities);
@@ -19,7 +19,11 @@ export default function LotCard({ lot, compact = false, saved = false, onSave, o
       <div className="lot-meta">
         <span>🅿️ {lot.available_spaces}/{lot.capacity} spaces</span>
         <span>🚗 {lot.drive_minutes} min</span>
-        <span>🚶 {lot.walk_meters}m</span>
+        {liveWalkMinutes != null ? (
+          <span title="Walk time from your location">🚶 {liveWalkMinutes} min (live)</span>
+        ) : (
+          <span>🚶 {lot.walk_meters}m</span>
+        )}
         <span>⭐ {lot.rating}</span>
         {chips.map((chip) => (
           <span key={chip.label}>{chip.icon} {chip.label}</span>

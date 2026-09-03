@@ -97,7 +97,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 
 The `NEXT_PUBLIC_*` pair powers sign-in in the browser and is meant to be public — see
 `VERCEL_SUPABASE_SETUP.md` for the full explanation and how to make your account an admin.
-Optionally add `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` to enable rate limiting on
+Add `NEXT_PUBLIC_MAPBOX_TOKEN` (free tier at mapbox.com) for the real map, destination
+autocomplete, and owner-address geocoding — without it those features degrade gracefully rather
+than breaking. Optionally add `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` to enable rate limiting on
 write endpoints.
 
 Run `supabase/schema.sql` and `supabase/seed.sql` in Supabase first.

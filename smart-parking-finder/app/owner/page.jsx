@@ -14,6 +14,7 @@ import {
   updateOpenStatus,
 } from '../../lib/api';
 import { verificationLabel } from '../../lib/format';
+import { geocodeAddress, hasMapboxToken } from '../../lib/mapbox';
 
 const EMPTY_LOT_FORM = {
   name: '', area: '', type: 'Open car park', address: '', opening_hours: '06:00–22:00',
@@ -86,8 +87,15 @@ export default function OwnerPage() {
           security: lotForm.security,
         },
       };
+      if (hasMapboxToken()) {
+        const place = await geocodeAddress(`${lotForm.address}, ${lotForm.area}, Lagos, Nigeria`);
+        if (place) {
+          body.latitude = place.lat;
+          body.longitude = place.lng;
+        }
+      }
       await createOwnerPark(body);
-      showToast('Parking lot submitted for verification.');
+      showToast(body.latitude != null ? 'Parking lot submitted for verification (address located on map).' : 'Parking lot submitted for verification.');
       setLotForm(EMPTY_LOT_FORM);
       loadLots();
     } catch (err) {

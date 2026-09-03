@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '../components/AppShell';
+import DestinationSearchField from '../components/DestinationSearchField';
 import LotCard from '../components/LotCard';
 import { useSession } from '../components/SessionProvider';
 import { useToast } from '../components/ToastProvider';
@@ -72,15 +73,11 @@ export default function HomePage() {
           no mock data, no simulated sensors.
         </p>
         <form className="search-card" onSubmit={handleSearch}>
-          <label className="field">
-            <span>⌕</span>
-            <input
-              type="search"
-              placeholder="Where are you going? e.g. Victoria Island"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-            />
-          </label>
+          <DestinationSearchField
+            value={destination}
+            onChange={setDestination}
+            placeholder="Where are you going? e.g. Victoria Island"
+          />
           <label className="field">
             <span>🚘</span>
             <select value={amenity} onChange={(e) => setAmenity(e.target.value)}>

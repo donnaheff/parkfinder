@@ -55,6 +55,16 @@ changing them.
 Important: use the **service role key only in the non-public server env vars above**. Never put it
 in a `NEXT_PUBLIC_*` variable or browser JavaScript.
 
+For the real interactive map, geocoding search, and address lookup (replacing the old illustrative
+SVG map), add a free [Mapbox](https://mapbox.com) token:
+
+```text
+NEXT_PUBLIC_MAPBOX_TOKEN=YOUR_MAPBOX_PUBLIC_TOKEN
+```
+
+Without it, `/map` shows a "set a Mapbox token" placeholder instead of crashing, and destination
+search/owner-address geocoding just skip the autocomplete/auto-fill step.
+
 Optionally, add rate limiting on write endpoints (owner registration, lot submission, community
 reports, saved parks) by creating a free [Upstash](https://upstash.com) Redis database and setting:
 

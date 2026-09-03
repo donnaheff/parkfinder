@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import AppShell from '../../components/AppShell';
+import CityMap from '../../components/CityMap';
 import LotCard from '../../components/LotCard';
 import { useSession } from '../../components/SessionProvider';
 import { useToast } from '../../components/ToastProvider';
 import { getParks, getSavedParks, saveParkingLot } from '../../lib/api';
-import { availabilityClass } from '../../lib/format';
+import { distanceMeters, getCurrentLocation, walkMinutes } from '../../lib/geo';
 
 export default function MapPage() {
   const [lots, setLots] = useState([]);
@@ -14,6 +15,8 @@ export default function MapPage() {
   const [savedIds, setSavedIds] = useState(new Set());
   const [clock, setClock] = useState('');
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locating, setLocating] = useState(false);
   const showToast = useToast();
   const { session } = useSession();
 
@@ -43,6 +46,22 @@ export default function MapPage() {
   }, [session]);
 
   const selectedLot = lots.find((l) => l.id === selectedId) || null;
+  const selectedDistance = userLocation && selectedLot?.latitude != null
+    ? distanceMeters(userLocation, { lat: selectedLot.latitude, lng: selectedLot.longitude })
+    : null;
+
+  async function handleLocate() {
+    setLocating(true);
+    try {
+      const loc = await getCurrentLocation();
+      setUserLocation(loc);
+      showToast('Using your current location.');
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setLocating(false);
+    }
+  }
 
   async function handleSave(lot) {
     if (!session) { showToast('Sign in to save parking lots.'); return; }
@@ -60,9 +79,12 @@ export default function MapPage() {
       <section className="panel page-hero">
         <p className="eyebrow">Live sensor grid</p>
         <h1>Live parking map</h1>
-        <p className="lead">Tap a marker to inspect availability for that car park. Positions are driven by each lot&rsquo;s real map coordinates.</p>
+        <p className="lead">Tap a marker to inspect availability for that car park. Positions come from each lot&rsquo;s real coordinates.</p>
         <div className="actions">
           <button className="btn secondary" type="button" onClick={load}>Refresh live data</button>
+          <button className="btn secondary" type="button" onClick={handleLocate} disabled={locating}>
+            {locating ? 'Locating…' : userLocation ? 'Update my location' : 'Use my location'}
+          </button>
           <span className="pill"><span className="live-dot" /><span>{clock || 'Syncing…'}</span></span>
         </div>
       </section>
@@ -71,42 +93,22 @@ export default function MapPage() {
         <article className="panel map-shell">
           <div className="map-head">
             <div>
-              <h2>City sensor grid</h2>
+              <h2>City map</h2>
               <p className="muted">{selectedLot ? `${selectedLot.name}: ${selectedLot.available_spaces} spaces` : 'Tap a marker to view spaces'}</p>
             </div>
             <span className="pill"><span className="live-dot" /> {loading ? 'updating' : 'live'}</span>
           </div>
-          <div className="map-wrap" aria-label="City parking map">
-            <svg className="city-map" viewBox="0 0 760 520" role="img" aria-label="Road map">
-              <path className="road major" d="M45 410 C170 330 255 340 365 270 S570 120 720 100" />
-              <path className="road" d="M88 80 C185 160 268 162 356 145 C480 120 560 172 674 250" />
-              <path className="road" d="M118 490 C165 390 210 295 260 190 C306 96 346 54 405 32" />
-              <path className="road" d="M475 500 C450 395 433 320 458 230 C483 145 528 90 615 40" />
-              <path className="road" d="M36 270 C126 240 215 248 305 300 C414 360 531 390 706 345" />
-            </svg>
-            {lots.map((lot) => (
-              <button
-                key={lot.id}
-                type="button"
-                className={`marker ${availabilityClass(lot)} ${selectedId === lot.id ? 'selected' : ''}`}
-                style={{ left: `${lot.map_x}%`, top: `${lot.map_y}%` }}
-                aria-label={`${lot.name}: ${lot.available_spaces} spaces`}
-                onClick={() => setSelectedId(lot.id)}
-              >
-                <span>{lot.available_spaces}</span>
-              </button>
-            ))}
-            <div className="map-legend">
-              <div className="legend-item"><span className="swatch" /> Plenty of spaces</div>
-              <div className="legend-item"><span className="swatch warn" /> Filling fast</div>
-              <div className="legend-item"><span className="swatch danger" /> Full / closed</div>
-            </div>
-          </div>
+          <CityMap lots={lots} selectedId={selectedId} onSelect={setSelectedId} userLocation={userLocation} />
         </article>
         <aside className="panel card">
           <h2>Selected lot</h2>
           {selectedLot ? (
-            <LotCard lot={selectedLot} saved={savedIds.has(selectedLot.id)} onSave={handleSave} />
+            <LotCard
+              lot={selectedLot}
+              saved={savedIds.has(selectedLot.id)}
+              onSave={handleSave}
+              liveWalkMinutes={selectedDistance != null ? walkMinutes(selectedDistance) : null}
+            />
           ) : (
             <p className="muted">No lots to show yet.</p>
           )}

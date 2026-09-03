@@ -86,6 +86,11 @@ h3 { margin: 0; }
 .field input, .field select, .field textarea { width: 100%; color: var(--text); background: transparent; outline: 0; border: 0; min-width: 0; }
 option { color: #08101d; }
 
+.place-suggestions { position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 40; list-style: none; margin: 0; padding: 6px; background: #0b1a2e; border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); max-height: 260px; overflow-y: auto; }
+.place-suggestions li + li { margin-top: 2px; }
+.place-suggestions button { display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; background: transparent; color: var(--text); font-size: .9rem; }
+.place-suggestions button:hover { background: rgba(255,255,255,.08); }
+
 .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 22px; }
 .stat { background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 18px; padding: 16px; }
 .stat strong { display: block; font-size: 1.65rem; letter-spacing: -.05em; }
@@ -105,6 +110,18 @@ option { color: #08101d; }
 .marker.low { background: linear-gradient(135deg, var(--warn), #ff9166); }
 .marker.full { background: linear-gradient(135deg, var(--danger), #ff9aa5); }
 .marker.selected { outline: 4px solid rgba(255,255,255,.35); scale: 1.13; z-index: 5; }
+
+/* Pin used inside react-map-gl's <Marker> (which handles its own placement/transform) —
+   same look as .marker above, minus the absolute positioning that class relies on. */
+.map-pin { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 16px 16px 16px 4px; rotate: -45deg; background: linear-gradient(135deg, var(--brand), var(--blue)); color: #03141d; font-weight: 950; font-size: .82rem; box-shadow: 0 12px 28px rgba(0,0,0,.35); border: 2px solid rgba(255,255,255,.75); cursor: pointer; }
+.map-pin span { rotate: 45deg; }
+.map-pin.low { background: linear-gradient(135deg, var(--warn), #ff9166); }
+.map-pin.full { background: linear-gradient(135deg, var(--danger), #ff9aa5); }
+.map-pin.selected { outline: 4px solid rgba(255,255,255,.35); scale: 1.13; z-index: 5; }
+.user-location-dot { width: 16px; height: 16px; border-radius: 999px; background: var(--blue); border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(77,184,255,.25); }
+.mapboxgl-map { border-radius: inherit; }
+.mapboxgl-ctrl-attrib { font-size: 10px; }
+.map-token-missing { display: grid; place-items: center; min-height: 420px; padding: 24px; text-align: center; }
 .map-legend { position: absolute; left: 14px; bottom: 14px; background: rgba(3,14,26,.78); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; color: var(--muted); font-size: .82rem; display: grid; gap: 8px; backdrop-filter: blur(12px); }
 .legend-item { display: flex; align-items: center; gap: 8px; }
 .swatch { width: 12px; height: 12px; border-radius: 4px; background: var(--brand); }
