@@ -18,7 +18,7 @@ import { verificationLabel } from '../../lib/format';
 import { geocodeAddress, hasMapboxToken } from '../../lib/mapbox';
 
 const EMPTY_LOT_FORM = {
-  name: '', area: '', type: 'Open car park', address: '', opening_hours: '06:00–22:00',
+  name: '', area: '', city: 'Lagos', country: 'Nigeria', type: 'Open car park', address: '', opening_hours: '06:00–22:00',
   capacity: 60, available_spaces: 20, walk_meters: 350, drive_minutes: 8,
   ev_charging: false, ev_connector_type: '', ev_kw: '',
   accessible: true, motorbike: true, covered: false, security: true,
@@ -101,6 +101,8 @@ export default function OwnerPage() {
       const body = {
         name: lotForm.name,
         area: lotForm.area,
+        city: lotForm.city,
+        country: lotForm.country,
         type: lotForm.type,
         address: lotForm.address,
         opening_hours: lotForm.opening_hours,
@@ -120,7 +122,7 @@ export default function OwnerPage() {
         },
       };
       if (hasMapboxToken()) {
-        const place = await geocodeAddress(`${lotForm.address}, ${lotForm.area}, Lagos, Nigeria`);
+        const place = await geocodeAddress(`${lotForm.address}, ${lotForm.area}, ${lotForm.city}, ${lotForm.country}`);
         if (place) {
           body.latitude = place.lat;
           body.longitude = place.lng;
@@ -201,8 +203,16 @@ export default function OwnerPage() {
                 <input required value={lotForm.name} onChange={(e) => setLotField('name', e.target.value)} />
               </label>
               <label>Area
-                <input required value={lotForm.area} onChange={(e) => setLotField('area', e.target.value)} />
+                <input required value={lotForm.area} onChange={(e) => setLotField('area', e.target.value)} placeholder="e.g. Victoria Island" />
               </label>
+              <div className="grid two">
+                <label>City
+                  <input required value={lotForm.city} onChange={(e) => setLotField('city', e.target.value)} />
+                </label>
+                <label>Country
+                  <input required value={lotForm.country} onChange={(e) => setLotField('country', e.target.value)} />
+                </label>
+              </div>
               <label>Address
                 <input required value={lotForm.address} onChange={(e) => setLotField('address', e.target.value)} />
               </label>

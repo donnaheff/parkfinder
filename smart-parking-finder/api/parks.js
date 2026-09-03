@@ -6,6 +6,7 @@ module.exports = async (req, res) => handle(async () => {
   const url = new URL(req.url, 'http://localhost');
   const q = url.searchParams.get('q');
   const area = url.searchParams.get('area');
+  const city = url.searchParams.get('city');
   const amenity = normalizeAmenityKey(url.searchParams.get('amenity') || '');
   const available = url.searchParams.get('available');
   const ownerListed = url.searchParams.get('ownerListed');
@@ -14,9 +15,10 @@ module.exports = async (req, res) => handle(async () => {
   let query = getClient().from('parking_lots').select('*').order('available_spaces', { ascending: false });
   if (q) {
     const v = escapeFilterValue(q).slice(0, 120);
-    query = query.or(`name.ilike.*${v}*,area.ilike.*${v}*,address.ilike.*${v}*,type.ilike.*${v}*`);
+    query = query.or(`name.ilike.*${v}*,area.ilike.*${v}*,city.ilike.*${v}*,address.ilike.*${v}*,type.ilike.*${v}*`);
   }
   if (area) query = query.ilike('area', `*${escapeFilterValue(area).slice(0, 120)}*`);
+  if (city) query = query.ilike('city', `*${escapeFilterValue(city).slice(0, 120)}*`);
   if (available === 'true') query = query.eq('is_open', true).gt('available_spaces', 0);
   if (ownerListed === 'true') query = query.eq('owner_listed', true);
   if (status) query = query.eq('verification_status', status);

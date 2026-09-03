@@ -30,6 +30,7 @@
     "resend": "^6.25.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.62.1",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.4",

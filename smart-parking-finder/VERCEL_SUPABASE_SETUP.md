@@ -36,6 +36,12 @@ supabase/seed.sql
 
 This creates the tables and inserts the first six car parks.
 
+`parking_lots` also has `city`/`country` columns (default `'Lagos'`/`'Nigeria'`, matching the seed
+data) now that lot coordinates come from real Mapbox geocoding instead of the old Lagos-only
+`areaCoords()` area-name heuristic — owners entering a lot outside Lagos should fill those in on the
+form so search and geocoding target the right city. If your project predates this, re-run
+`schema.sql` (idempotent) to pick up the new columns.
+
 ## 2. Add Vercel environment variables
 
 In Vercel project settings, add:

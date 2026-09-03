@@ -37,7 +37,8 @@ export default function AppShell({ children }) {
   }
 
   return (
-    <main className="app-shell">
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <header className="topbar">
         <Link className="brand" href="/">
           <span className="brand-mark">P</span>
@@ -61,7 +62,7 @@ export default function AppShell({ children }) {
         </nav>
       </header>
 
-      {children}
+      <main id="main-content">{children}</main>
 
       <nav className="bottom-nav" aria-label="Mobile navigation">
         {BOTTOM_LINKS.map((link) => (
@@ -70,6 +71,6 @@ export default function AppShell({ children }) {
           </Link>
         ))}
       </nav>
-    </main>
+    </div>
   );
 }

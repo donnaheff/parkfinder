@@ -30,6 +30,8 @@ create table if not exists public.parking_lots (
   owner_id uuid references public.owners(id) on delete set null,
   name text not null,
   area text not null,
+  city text not null default 'Lagos',
+  country text not null default 'Nigeria',
   type text not null default 'Open car park',
   address text not null,
   latitude double precision,
@@ -51,6 +53,8 @@ create table if not exists public.parking_lots (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.parking_lots add column if not exists city text not null default 'Lagos';
+alter table public.parking_lots add column if not exists country text not null default 'Nigeria';
 
 create table if not exists public.community_reports (
   id uuid primary key default gen_random_uuid(),

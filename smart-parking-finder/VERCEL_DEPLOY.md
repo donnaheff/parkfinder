@@ -125,7 +125,7 @@ NEXT_PUBLIC_API_BASE=http://localhost:8787 npm run dev
 ```bash
 npm run lint    # ESLint
 npm test        # Vitest — unit tests for lib/format.js and api/_lib/parking.js
-npx playwright test        # e2e — e2e/smoke.spec.js, no credentials needed
+npx playwright test        # e2e — smoke + axe-core accessibility scan, no credentials needed
 ```
 
 `npx playwright test` also picks up `e2e/auth-flows.spec.js`, which covers owner

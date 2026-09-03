@@ -104,7 +104,7 @@ export default function LotDetailPage() {
   return (
     <AppShell>
       <section className="panel page-hero">
-        <p className="eyebrow">{lot.area}</p>
+        <p className="eyebrow">{lot.area}{lot.city ? `, ${lot.city}` : ''}</p>
         <h1>{lot.name}</h1>
         <p className="lead">{lot.address}</p>
       </section>

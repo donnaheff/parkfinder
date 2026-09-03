@@ -1,18 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Map, { Marker, NavigationControl } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { availabilityClass } from '../lib/format';
 import { hasMapboxToken } from '../lib/mapbox';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-const LAGOS_CENTER = { longitude: 3.3792, latitude: 6.5244 };
+// Used only until real lot coordinates load (lots start empty and are
+// fetched async) — the map then recenters on their centroid below, so this
+// isn't a Lagos-only assumption baked into the app.
+const FALLBACK_CENTER = { longitude: 3.3792, latitude: 6.5244 };
 
 export default function CityMap({ lots, selectedId, onSelect, userLocation, height = 520 }) {
-  const [viewState, setViewState] = useState({ ...LAGOS_CENTER, zoom: 11 });
+  const [viewState, setViewState] = useState({ ...FALLBACK_CENTER, zoom: 11 });
+  const [centered, setCentered] = useState(false);
 
   const geocodedLots = lots.filter((l) => l.latitude != null && l.longitude != null);
+
+  useEffect(() => {
+    if (centered || geocodedLots.length === 0) return;
+    const sum = geocodedLots.reduce((acc, l) => ({ longitude: acc.longitude + l.longitude, latitude: acc.latitude + l.latitude }), { longitude: 0, latitude: 0 });
+    setViewState((v) => ({ ...v, longitude: sum.longitude / geocodedLots.length, latitude: sum.latitude / geocodedLots.length }));
+    setCentered(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geocodedLots.length, centered]);
 
   if (!hasMapboxToken()) {
     return (
