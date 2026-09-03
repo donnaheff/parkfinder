@@ -154,3 +154,174 @@ create policy "users can manage their own saved_parks"
 
 -- For this POC, Vercel serverless functions use the Supabase service role key.
 -- Keep tables private in Supabase; do not expose the service role key to the browser.
+
+-- Phase 3: reservations (hold -> confirm -> cancel/complete). No payment
+-- processor is wired up yet — 'awaiting_payment' exists in the status enum
+-- so a future Paystack integration has somewhere to sit between hold and
+-- confirm without a schema change; nothing produces that status today.
+create table if not exists public.reservations (
+  id uuid primary key default gen_random_uuid(),
+  lot_id uuid not null references public.parking_lots(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  start_time timestamptz not null,
+  end_time timestamptz not null,
+  status text not null default 'held' check (status in ('held','awaiting_payment','confirmed','cancelled','completed')),
+  hold_expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (end_time > start_time)
+);
+create index if not exists reservations_user_idx on public.reservations(user_id);
+create index if not exists reservations_lot_idx on public.reservations(lot_id);
+create index if not exists reservations_status_idx on public.reservations(status);
+
+alter table public.reservations enable row level security;
+create policy "users can read their own reservations"
+  on public.reservations for select
+  to authenticated
+  using (user_id = auth.uid());
+-- No insert/update/delete policies: every write goes through the functions
+-- below (service-role-called from the API) so available_spaces and the
+-- reservation row change atomically together.
+
+-- Creates a hold: atomically checks + decrements available_spaces and
+-- inserts the reservation row, so two simultaneous requests for the last
+-- space can't both succeed. Runs as the function owner (security definer)
+-- with a fixed search_path so it can't be tricked by a session-local one.
+create or replace function public.create_reservation_hold(
+  p_lot_id uuid,
+  p_user_id uuid,
+  p_start_time timestamptz,
+  p_end_time timestamptz,
+  p_hold_minutes integer default 10
+) returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_lot public.parking_lots;
+  v_reservation public.reservations;
+begin
+  if p_end_time <= p_start_time then
+    raise exception 'end_time must be after start_time' using errcode = 'P0001';
+  end if;
+
+  select * into v_lot from public.parking_lots where id = p_lot_id for update;
+  if not found then
+    raise exception 'Parking lot not found' using errcode = 'P0002';
+  end if;
+  if not v_lot.is_open then
+    raise exception 'This car park is currently closed' using errcode = 'P0001';
+  end if;
+  if v_lot.available_spaces <= 0 then
+    raise exception 'No spaces available' using errcode = 'P0001';
+  end if;
+
+  update public.parking_lots
+    set available_spaces = available_spaces - 1, updated_at = now()
+    where id = p_lot_id;
+
+  insert into public.reservations (lot_id, user_id, start_time, end_time, status, hold_expires_at)
+  values (p_lot_id, p_user_id, p_start_time, p_end_time, 'held', now() + (p_hold_minutes || ' minutes')::interval)
+  returning * into v_reservation;
+
+  return v_reservation;
+end;
+$$;
+
+-- Confirms a held reservation (clears the expiry so the cron sweep leaves it
+-- alone). Scoped to the owning user unless p_user_id is null (used by admin
+-- tooling later, not the current API).
+create or replace function public.confirm_reservation(
+  p_reservation_id uuid,
+  p_user_id uuid
+) returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_reservation public.reservations;
+begin
+  select * into v_reservation from public.reservations where id = p_reservation_id for update;
+  if not found then
+    raise exception 'Reservation not found' using errcode = 'P0002';
+  end if;
+  if v_reservation.user_id <> p_user_id then
+    raise exception 'Not your reservation' using errcode = 'P0001';
+  end if;
+  if v_reservation.status <> 'held' then
+    raise exception 'Only a held reservation can be confirmed' using errcode = 'P0001';
+  end if;
+
+  update public.reservations
+    set status = 'confirmed', hold_expires_at = null, updated_at = now()
+    where id = p_reservation_id
+    returning * into v_reservation;
+
+  return v_reservation;
+end;
+$$;
+
+-- Releases a hold or confirmed reservation back to available_spaces.
+-- p_user_id null bypasses the ownership check (used by the expiry sweep).
+create or replace function public.release_reservation(
+  p_reservation_id uuid,
+  p_user_id uuid default null
+) returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_reservation public.reservations;
+begin
+  select * into v_reservation from public.reservations where id = p_reservation_id for update;
+  if not found then
+    raise exception 'Reservation not found' using errcode = 'P0002';
+  end if;
+  if p_user_id is not null and v_reservation.user_id <> p_user_id then
+    raise exception 'Not your reservation' using errcode = 'P0001';
+  end if;
+  if v_reservation.status not in ('held', 'awaiting_payment', 'confirmed') then
+    return v_reservation; -- already terminal, no-op
+  end if;
+
+  update public.parking_lots
+    set available_spaces = least(capacity, available_spaces + 1), updated_at = now()
+    where id = v_reservation.lot_id;
+
+  update public.reservations
+    set status = 'cancelled', updated_at = now()
+    where id = p_reservation_id
+    returning * into v_reservation;
+
+  return v_reservation;
+end;
+$$;
+
+-- Sweeps expired holds back into available_spaces. Called on a schedule by
+-- api/cron/release-holds.js (Vercel Cron), not exposed to end users.
+create or replace function public.release_expired_holds()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count integer := 0;
+  v_row record;
+begin
+  for v_row in
+    select id, lot_id from public.reservations
+    where status = 'held' and hold_expires_at < now()
+    for update skip locked
+  loop
+    update public.parking_lots set available_spaces = least(capacity, available_spaces + 1), updated_at = now() where id = v_row.lot_id;
+    update public.reservations set status = 'cancelled', updated_at = now() where id = v_row.id;
+    v_count := v_count + 1;
+  end loop;
+  return v_count;
+end;
+$$;

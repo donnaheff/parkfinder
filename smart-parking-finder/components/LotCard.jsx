@@ -1,6 +1,7 @@
 'use client';
 
 import { amenityChips, availabilityClass, availabilityText, occupancyRatio, directionsUrl } from '../lib/format';
+import ReserveButton from './ReserveButton';
 
 export default function LotCard({ lot, compact = false, saved = false, onSave, onRoute, liveWalkMinutes }) {
   const cls = availabilityClass(lot);
@@ -49,6 +50,7 @@ export default function LotCard({ lot, compact = false, saved = false, onSave, o
           >
             {saved ? 'Saved ✓' : 'Save'}
           </button>
+          <ReserveButton lot={lot} />
         </div>
       )}
     </article>

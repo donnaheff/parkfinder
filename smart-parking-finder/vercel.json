@@ -11,6 +11,9 @@
     { "source": "/app", "destination": "/", "permanent": true },
     { "source": "/backend-demo", "destination": "/admin", "permanent": true }
   ],
+  "crons": [
+    { "path": "/api/cron/release-holds", "schedule": "*/15 * * * *" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

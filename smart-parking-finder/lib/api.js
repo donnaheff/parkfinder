@@ -114,3 +114,22 @@ export function adminDecision(id, action, notes) {
     body: JSON.stringify({ notes: notes || '' }),
   });
 }
+
+export function getReservations() {
+  return request('/api/reservations');
+}
+
+export function createReservation({ parking_lot_id, start_time, end_time }) {
+  return request('/api/reservations', {
+    method: 'POST',
+    body: JSON.stringify({ parking_lot_id, start_time, end_time }),
+  });
+}
+
+export function confirmReservation(id) {
+  return request(`/api/reservations/${id}/confirm`, { method: 'PATCH' });
+}
+
+export function cancelReservation(id) {
+  return request(`/api/reservations/${id}/cancel`, { method: 'PATCH' });
+}

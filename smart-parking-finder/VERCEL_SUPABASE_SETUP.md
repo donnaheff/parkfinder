@@ -75,6 +75,20 @@ UPSTASH_REDIS_REST_TOKEN=YOUR_UPSTASH_REST_TOKEN
 
 Without these, the API still works — rate limiting just no-ops.
 
+Reservations use a cron job (`vercel.json`'s `crons`) to release expired holds. Set:
+
+```text
+CRON_SECRET=a-long-random-secret
+```
+
+Vercel sends this automatically as a Bearer token on scheduled invocations of `/api/cron/release-holds`
+once it's set — generate one with e.g. `openssl rand -hex 32`. Without it, the endpoint fails closed
+(500) rather than running unauthenticated. Note Vercel's Hobby plan limits cron jobs to once per day;
+the configured 15-minute schedule needs a Pro plan. Until a sweep runs, an expired-but-unreleased
+hold keeps its space marked unavailable (available_spaces was decremented atomically when the hold
+was created, and only the sweep — or the user manually confirming or cancelling — puts it back), so
+infrequent sweeping is a real availability-accuracy problem on Hobby, not just a cosmetic one.
+
 ## 3. Deploy to Vercel
 
 ```bash

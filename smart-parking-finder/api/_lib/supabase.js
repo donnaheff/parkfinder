@@ -16,6 +16,8 @@ function statusFromPostgrestError(error) {
   if (error.code === '23505') return 409; // unique_violation
   if (error.code === '23503') return 400; // foreign_key_violation
   if (error.code === '23514') return 400; // check_violation
+  if (error.code === 'P0002') return 404; // raised "not found" (our RPC functions)
+  if (error.code === 'P0001') return 400; // raised generic exception (our RPC functions)
   return undefined;
 }
 
