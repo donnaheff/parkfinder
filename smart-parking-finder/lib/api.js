@@ -133,3 +133,25 @@ export function confirmReservation(id) {
 export function cancelReservation(id) {
   return request(`/api/reservations/${id}/cancel`, { method: 'PATCH' });
 }
+
+export function getReviews(parkingLotId) {
+  return request(`/api/reviews?parking_lot_id=${encodeURIComponent(parkingLotId)}`);
+}
+
+export function postReview({ parking_lot_id, rating, comment, photo_urls }) {
+  return request('/api/reviews', {
+    method: 'POST',
+    body: JSON.stringify({ parking_lot_id, rating, comment, photo_urls }),
+  });
+}
+
+export function deleteReview(id) {
+  return request(`/api/reviews/${id}`, { method: 'DELETE' });
+}
+
+export function uploadPhoto({ data, mime, url }) {
+  return request('/api/uploads/photo', {
+    method: 'POST',
+    body: JSON.stringify(url ? { url } : { data, mime }),
+  });
+}

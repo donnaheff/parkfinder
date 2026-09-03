@@ -12,6 +12,7 @@ import {
   registerOwner,
   updateAvailability,
   updateOpenStatus,
+  uploadPhoto,
 } from '../../lib/api';
 import { verificationLabel } from '../../lib/format';
 import { geocodeAddress, hasMapboxToken } from '../../lib/mapbox';
@@ -19,8 +20,19 @@ import { geocodeAddress, hasMapboxToken } from '../../lib/mapbox';
 const EMPTY_LOT_FORM = {
   name: '', area: '', type: 'Open car park', address: '', opening_hours: '06:00–22:00',
   capacity: 60, available_spaces: 20, walk_meters: 350, drive_minutes: 8,
-  ev_charging: false, accessible: true, motorbike: true, covered: false, security: true,
+  ev_charging: false, ev_connector_type: '', ev_kw: '',
+  accessible: true, motorbike: true, covered: false, security: true,
+  primary_photo_url: '',
 };
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function OwnerPage() {
   const { session, user, loading: sessionLoading } = useSession();
@@ -30,6 +42,7 @@ export default function OwnerPage() {
   const [lotForm, setLotForm] = useState(EMPTY_LOT_FORM);
   const [lots, setLots] = useState([]);
   const [lotsLoading, setLotsLoading] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const showToast = useToast();
 
   useEffect(() => {
@@ -66,6 +79,22 @@ export default function OwnerPage() {
     }
   }
 
+  async function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoUploading(true);
+    try {
+      const dataUrl = await fileToBase64(file);
+      const { url } = await uploadPhoto({ data: dataUrl, mime: file.type });
+      setLotField('primary_photo_url', url);
+      showToast('Photo uploaded.');
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
   async function handleAddLot(e) {
     e.preventDefault();
     try {
@@ -79,8 +108,11 @@ export default function OwnerPage() {
         available_spaces: Number(lotForm.available_spaces),
         walk_meters: Number(lotForm.walk_meters),
         drive_minutes: Number(lotForm.drive_minutes),
+        primary_photo_url: lotForm.primary_photo_url,
         amenities: {
           ev_charging: lotForm.ev_charging,
+          ev_connector_type: lotForm.ev_charging ? lotForm.ev_connector_type : '',
+          ev_kw: lotForm.ev_charging ? lotForm.ev_kw : '',
           accessible: lotForm.accessible,
           motorbike: lotForm.motorbike,
           covered: lotForm.covered,
@@ -191,9 +223,34 @@ export default function OwnerPage() {
                 </label>
               </div>
               <label><span><input type="checkbox" checked={lotForm.ev_charging} onChange={(e) => setLotField('ev_charging', e.target.checked)} /> EV charging</span></label>
+              {lotForm.ev_charging && (
+                <div className="grid two">
+                  <label>Connector type
+                    <select value={lotForm.ev_connector_type} onChange={(e) => setLotField('ev_connector_type', e.target.value)}>
+                      <option value="">Unspecified</option>
+                      <option value="Type 2">Type 2</option>
+                      <option value="CCS2">CCS2</option>
+                      <option value="CHAdeMO">CHAdeMO</option>
+                    </select>
+                  </label>
+                  <label>Power (kW)
+                    <input type="number" min="1" value={lotForm.ev_kw} onChange={(e) => setLotField('ev_kw', e.target.value)} />
+                  </label>
+                </div>
+              )}
               <label><span><input type="checkbox" checked={lotForm.accessible} onChange={(e) => setLotField('accessible', e.target.checked)} /> Accessible bays</span></label>
               <label><span><input type="checkbox" checked={lotForm.motorbike} onChange={(e) => setLotField('motorbike', e.target.checked)} /> Motorbike support</span></label>
               <label><span><input type="checkbox" checked={lotForm.covered} onChange={(e) => setLotField('covered', e.target.checked)} /> Covered parking</span></label>
+              <label>Photo
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handlePhotoChange} disabled={photoUploading} />
+              </label>
+              {photoUploading && <p className="muted small">Uploading…</p>}
+              {lotForm.primary_photo_url && (
+                <div className="card" style={{ padding: 8 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={lotForm.primary_photo_url} alt="Lot preview" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+                </div>
+              )}
               <button className="btn primary" type="submit">Submit for verification</button>
             </form>
           </aside>

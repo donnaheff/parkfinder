@@ -99,6 +99,13 @@ EMAIL_FROM=ParkSwift <notifications@yourdomain.com>
 
 Without `RESEND_API_KEY`, the API still works — emails just don't send (logged, not thrown).
 
+Reviews and real photo uploads need no extra env vars — `supabase/schema.sql` already creates the
+`reviews` table (one review per user per lot, enforced by a unique constraint; `parking_lots.rating`
+is kept in sync by a trigger that recomputes the average on every insert/update/delete) and the
+public `lot-photos` Storage bucket with its access policies. Just make sure you ran the current
+`schema.sql` — if your project was set up before Phase 5, re-run it in the SQL Editor (it's
+idempotent) to pick up the `reviews` table and the storage bucket/policies.
+
 ## 3. Deploy to Vercel
 
 ```bash
@@ -147,6 +154,9 @@ POST   /api/updates
 GET    /api/saved
 POST   /api/saved
 DELETE /api/saved/:id
+GET    /api/reviews
+POST   /api/reviews
+DELETE /api/reviews/:id
 ```
 
 ### Owner
@@ -179,13 +189,14 @@ POST /api/seed
 ## Production hardening still needed
 
 Done: real user authentication (Supabase Auth), owner sessions, admin access via a real signed-in
-account instead of a shared token, row-level security policies, optional rate limiting.
+account instead of a shared token, row-level security policies, optional rate limiting, reservations
+with atomic holds, email notifications, reviews/ratings, and Supabase Storage for lot photos.
 
 Still worth adding before a public launch:
 
 - CAPTCHA or abuse protection beyond rate limiting
-- Supabase Storage for images (uploads currently return a data: URI placeholder, see
-  `api/uploads/photo.js`)
+- Payments for reservations (currently a stub — a hold is created and released/confirmed manually,
+  no charge is taken; see `lib/payments.js`)
 - Audit logging UI (the `admin_actions` table is populated, but nothing displays it yet)
 - Error monitoring (Sentry or similar)
 - Custom domain setup

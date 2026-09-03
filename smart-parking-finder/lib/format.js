@@ -28,11 +28,22 @@ const AMENITY_LABELS = {
   car_wash: { icon: '🚿', label: 'Car wash' },
 };
 
+// Amenity detail fields (e.g. EV connector type/power) live alongside the
+// boolean flags in the same amenities object rather than nested, so the
+// generic boolean iteration below has to know to skip them.
+const AMENITY_DETAIL_KEYS = new Set(['ev_connector_type', 'ev_kw']);
+
 export function amenityChips(amenities) {
   if (!amenities) return [];
   return Object.entries(amenities)
-    .filter(([, on]) => on)
-    .map(([key]) => AMENITY_LABELS[key] || { icon: '•', label: key });
+    .filter(([key, on]) => on && !AMENITY_DETAIL_KEYS.has(key))
+    .map(([key]) => {
+      if (key === 'ev_charging') {
+        const detail = [amenities.ev_connector_type, amenities.ev_kw ? `${amenities.ev_kw}kW` : null].filter(Boolean).join(' · ');
+        return { icon: '⚡', label: detail ? `EV (${detail})` : 'EV' };
+      }
+      return AMENITY_LABELS[key] || { icon: '•', label: key };
+    });
 }
 
 export function directionsUrl(lot, provider = 'osm') {

@@ -325,3 +325,68 @@ begin
   return v_count;
 end;
 $$;
+
+-- Phase 5: reviews. parking_lots.rating (previously a static owner-entered
+-- number) becomes a computed average, kept up to date by a trigger rather
+-- than aggregated on every /api/parks read.
+create table if not exists public.reviews (
+  id uuid primary key default gen_random_uuid(),
+  lot_id uuid not null references public.parking_lots(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  rating numeric not null check (rating >= 1 and rating <= 5),
+  comment text not null default '',
+  photo_urls text[] not null default '{}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (lot_id, user_id)
+);
+create index if not exists reviews_lot_idx on public.reviews(lot_id);
+
+alter table public.reviews enable row level security;
+create policy "reviews are publicly readable"
+  on public.reviews for select
+  to anon, authenticated
+  using (true);
+-- Insert/update/delete of reviews go through the service-role-backed API
+-- (api/reviews.js), which enforces "one review per user per lot" and
+-- ownership on delete — no direct anon/authenticated write policy.
+
+create or replace function public.recompute_lot_rating()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_lot_id uuid := coalesce(new.lot_id, old.lot_id);
+  v_avg numeric;
+begin
+  select round(avg(rating)::numeric, 1) into v_avg from public.reviews where lot_id = v_lot_id;
+  update public.parking_lots set rating = coalesce(v_avg, 4.1), updated_at = now() where id = v_lot_id;
+  return null;
+end;
+$$;
+
+drop trigger if exists reviews_recompute_rating on public.reviews;
+create trigger reviews_recompute_rating
+  after insert or update or delete on public.reviews
+  for each row execute function public.recompute_lot_rating();
+
+-- Phase 5: real photo storage instead of the data: URI placeholder in
+-- api/uploads/photo.js. Public bucket (lot photos are meant to be visible
+-- to anyone browsing listings); only authenticated users can upload, via
+-- the service-role-backed API — direct client uploads aren't used, but the
+-- policy exists for parity if that changes later.
+insert into storage.buckets (id, name, public)
+values ('lot-photos', 'lot-photos', true)
+on conflict (id) do nothing;
+
+create policy "lot photos are publicly readable"
+  on storage.objects for select
+  to anon, authenticated
+  using (bucket_id = 'lot-photos');
+
+create policy "authenticated users can upload lot photos"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'lot-photos');

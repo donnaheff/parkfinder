@@ -32,6 +32,8 @@ function lotFromBody(body, ownerId) {
     rating: Number(body.rating || 4.1),
     amenities: {
       ev_charging: Boolean(body.amenities?.ev_charging || body.ev_charging || body.ev),
+      ev_connector_type: String(body.amenities?.ev_connector_type || '').trim() || undefined,
+      ev_kw: body.amenities?.ev_kw ? Number(body.amenities.ev_kw) : undefined,
       accessible: Boolean(body.amenities?.accessible || body.accessible),
       motorbike: Boolean(body.amenities?.motorbike || body.motorbike || body.bike),
       covered: Boolean(body.amenities?.covered || body.covered),
