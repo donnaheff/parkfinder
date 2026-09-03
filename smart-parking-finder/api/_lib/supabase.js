@@ -1,48 +1,52 @@
+const { createClient } = require('@supabase/supabase-js');
 const { fail } = require('./http');
 
-function config() {
+let client;
+function getClient() {
+  if (client) return client;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!url || !key) throw new Error('Missing SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables');
-  return { url: url.replace(/\/$/, ''), key };
+  client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  return client;
 }
-function qs(params = {}) {
-  const out = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== '') out.set(k, String(v));
-  }
-  return out.toString();
+
+function statusFromPostgrestError(error) {
+  if (error.code === 'PGRST116') return 404; // no rows for .single()/.maybeSingle()
+  if (error.code === '23505') return 409; // unique_violation
+  if (error.code === '23503') return 400; // foreign_key_violation
+  if (error.code === '23514') return 400; // check_violation
+  return undefined;
 }
-async function rest(tableAndQuery, options = {}) {
-  const { url, key } = config();
-  const res = await fetch(`${url}/rest/v1/${tableAndQuery}`, {
-    method: options.method || 'GET',
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      Prefer: options.prefer || 'return=representation',
-      ...(options.headers || {})
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
-  });
-  const text = await res.text();
-  let json = null;
-  try { json = text ? JSON.parse(text) : null; } catch { json = text; }
-  if (!res.ok) {
-    const msg = json?.message || json?.error || `Supabase REST error ${res.status}`;
-    const err = new Error(msg);
-    err.status = res.status;
-    err.details = json;
-    throw err;
-  }
-  return json;
+
+function dbError(error) {
+  const err = new Error(error.message || 'Supabase error');
+  err.status = statusFromPostgrestError(error) || 500;
+  err.details = error.details || error.hint || undefined;
+  return err;
 }
+
+// Unwraps a Supabase query builder result, throwing a normalized error on failure.
+async function run(builder) {
+  const { data, error } = await builder;
+  if (error) throw dbError(error);
+  return data;
+}
+
 async function one(table, id, idColumn = 'id') {
-  const rows = await rest(`${table}?${qs({ select: '*', [idColumn]: `eq.${id}`, limit: 1 })}`);
-  return rows && rows[0];
+  const { data, error } = await getClient().from(table).select('*').eq(idColumn, id).maybeSingle();
+  if (error) throw dbError(error);
+  return data;
 }
+
 async function handle(fn, res) {
   try { await fn(); } catch (err) { fail(res, err.status || 500, err.message || 'Server error', err.details); }
 }
-module.exports = { rest, qs, one, handle };
+
+// PostgREST treats , ( ) as structural characters inside an or()/and() filter value.
+// Backslash-escape them so user-supplied search text can't alter the filter's shape.
+function escapeFilterValue(value) {
+  return String(value ?? '').replace(/[,()]/g, '\\$&');
+}
+
+module.exports = { getClient, run, one, handle, dbError, escapeFilterValue };

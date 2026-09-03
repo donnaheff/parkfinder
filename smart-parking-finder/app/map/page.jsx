@@ -57,7 +57,7 @@ export default function MapPage() {
       <section className="panel page-hero">
         <p className="eyebrow">Live sensor grid</p>
         <h1>Live parking map</h1>
-        <p className="lead">Tap a marker to inspect availability for that car park. Positions are driven by each lot's real map coordinates.</p>
+        <p className="lead">Tap a marker to inspect availability for that car park. Positions are driven by each lot&rsquo;s real map coordinates.</p>
         <div className="actions">
           <button className="btn secondary" type="button" onClick={load}>Refresh live data</button>
           <span className="pill"><span className="live-dot" /><span>{clock || 'Syncing…'}</span></span>

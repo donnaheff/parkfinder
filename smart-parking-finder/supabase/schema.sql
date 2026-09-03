@@ -76,5 +76,38 @@ create index if not exists parking_lots_owner_idx on public.parking_lots(owner_i
 create index if not exists community_reports_lot_idx on public.community_reports(parking_lot_id);
 create index if not exists saved_parks_user_idx on public.saved_parks(user_id);
 
+-- Row Level Security
+--
+-- The Vercel API (api/*) always uses the service role key, which bypasses RLS
+-- entirely (the `service_role` Postgres role has BYPASSRLS) — so nothing here
+-- changes how the API behaves today. This is defense-in-depth for the `anon`/
+-- `authenticated` roles, so a leaked anon key (or a future client-side
+-- Supabase Auth session, see Phase 1 of the hardening plan) can't read or
+-- write more than intended. With RLS enabled and no matching policy, a role
+-- gets zero access by default — so only the tables/actions listed below are
+-- reachable directly; everything else still has to go through the API.
+
+alter table public.owners enable row level security;
+alter table public.parking_lots enable row level security;
+alter table public.community_reports enable row level security;
+alter table public.saved_parks enable row level security;
+alter table public.admin_actions enable row level security;
+
+-- Parking lot listings and community reports are meant to be public data.
+create policy "parking_lots are publicly readable"
+  on public.parking_lots for select
+  to anon, authenticated
+  using (true);
+
+create policy "community_reports are publicly readable"
+  on public.community_reports for select
+  to anon, authenticated
+  using (true);
+
+-- owners (contains email/phone), saved_parks (personal), and admin_actions
+-- (internal audit log) intentionally have no anon/authenticated policies —
+-- they stay reachable only via the service-role-backed API until Phase 1
+-- adds real per-user policies scoped to auth.uid().
+
 -- For this POC, Vercel serverless functions use the Supabase service role key.
 -- Keep tables private in Supabase; do not expose the service role key to the browser.

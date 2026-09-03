@@ -43,10 +43,23 @@ In Vercel project settings, add:
 ```text
 SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
-ADMIN_TOKEN=change-this-admin-token
+ADMIN_TOKEN=a-long-random-secret
 ```
 
+`ADMIN_TOKEN` is required — the admin endpoints now fail closed (500) if it's unset, rather than
+falling back to a default that ships in the public repo. Generate one with e.g. `openssl rand -hex 32`.
+
 Important: use the **service role key only in Vercel server environment variables**. Never put it in browser JavaScript.
+
+Optionally, add rate limiting on write endpoints (owner registration, lot submission, community
+reports, saved parks) by creating a free [Upstash](https://upstash.com) Redis database and setting:
+
+```text
+UPSTASH_REDIS_REST_URL=https://YOUR-DB.upstash.io
+UPSTASH_REDIS_REST_TOKEN=YOUR_UPSTASH_REST_TOKEN
+```
+
+Without these, the API still works — rate limiting just no-ops.
 
 ## 3. Deploy to Vercel
 

@@ -22,7 +22,7 @@ export default function OperatorPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kpis = useMemo(() => {
     const managed = lots.length;

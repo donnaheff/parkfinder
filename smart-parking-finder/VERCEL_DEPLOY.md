@@ -90,8 +90,11 @@ Set these in Vercel Project Settings:
 ```text
 SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
-ADMIN_TOKEN=change-this-admin-token
+ADMIN_TOKEN=a-long-random-secret
 ```
+
+`ADMIN_TOKEN` is required (no insecure default — see `VERCEL_SUPABASE_SETUP.md`). Optionally add
+`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` to enable rate limiting on write endpoints.
 
 Run `supabase/schema.sql` and `supabase/seed.sql` in Supabase first.
 

@@ -1,5 +1,5 @@
 const { ok, fail, requireMethod, requireAdmin, parseBody } = require('../../_lib/http');
-const { rest, one, handle } = require('../../_lib/supabase');
+const { getClient, run, one, handle } = require('../../_lib/supabase');
 module.exports = async (req, res) => handle(async () => {
   if (!requireMethod(req, res, ['PATCH'])) return;
   if (!requireAdmin(req, res)) return;
@@ -10,6 +10,6 @@ module.exports = async (req, res) => handle(async () => {
   const update = { updated_at: new Date().toISOString() };
   for (const key of allowed) if (body[key] !== undefined) update[key] = body[key];
   if (body.amenities) update.amenities = { ...lot.amenities, ...body.amenities };
-  const updated = await rest(`parking_lots?id=eq.${lot.id}`, { method: 'PATCH', body: update });
+  const updated = await run(getClient().from('parking_lots').update(update).eq('id', lot.id).select());
   ok(res, updated[0]);
 }, res);
