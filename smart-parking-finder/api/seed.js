@@ -1,5 +1,6 @@
-const { ok, requireMethod, requireAdmin } = require('./_lib/http');
+const { ok, requireMethod } = require('./_lib/http');
 const { getClient, run, handle } = require('./_lib/supabase');
+const { requireAdminUser } = require('./_lib/auth');
 const seedLots = [
   { name: 'Civic Centre Garage', area: 'Victoria Island', type: 'Multi-storey garage', address: 'Ozumba Mbadiwe corridor', latitude: 6.4281, longitude: 3.4219, map_x: 83, map_y: 23, capacity: 80, available_spaces: 42, walk_meters: 240, drive_minutes: 5, rating: 4.8, amenities: { ev_charging: true, accessible: true, motorbike: true, covered: true, security: true, lighting: true }, owner_listed: false, verification_status: 'verified', is_open: true },
   { name: 'Marina Multi-Storey', area: 'Lagos Island', type: 'Multi-storey garage', address: 'Marina district', latitude: 6.4541, longitude: 3.3947, map_x: 58, map_y: 52, capacity: 65, available_spaces: 17, walk_meters: 420, drive_minutes: 8, rating: 4.5, amenities: { ev_charging: false, accessible: true, motorbike: true, covered: true, security: true, lighting: true }, owner_listed: false, verification_status: 'verified', is_open: true },
@@ -10,7 +11,7 @@ const seedLots = [
 ];
 module.exports = async (req, res) => handle(async () => {
   if (!requireMethod(req, res, ['POST'])) return;
-  if (!requireAdmin(req, res)) return;
+  if (!await requireAdminUser(req, res)) return;
   const inserted = await run(getClient().from('parking_lots').insert(seedLots).select());
   ok(res, { inserted: inserted.length, data: inserted }, 201);
 }, res);

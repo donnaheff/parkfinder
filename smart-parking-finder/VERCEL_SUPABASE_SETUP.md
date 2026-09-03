@@ -43,13 +43,17 @@ In Vercel project settings, add:
 ```text
 SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
-ADMIN_TOKEN=a-long-random-secret
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
-`ADMIN_TOKEN` is required — the admin endpoints now fail closed (500) if it's unset, rather than
-falling back to a default that ships in the public repo. Generate one with e.g. `openssl rand -hex 32`.
+`NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` are what the browser uses for sign-in —
+they're meant to be public (RLS is what actually protects data, see `supabase/schema.sql`). Note
+`NEXT_PUBLIC_*` vars are baked in at **build time** since this is a static export: redeploy after
+changing them.
 
-Important: use the **service role key only in Vercel server environment variables**. Never put it in browser JavaScript.
+Important: use the **service role key only in the non-public server env vars above**. Never put it
+in a `NEXT_PUBLIC_*` variable or browser JavaScript.
 
 Optionally, add rate limiting on write endpoints (owner registration, lot submission, community
 reports, saved parks) by creating a free [Upstash](https://upstash.com) Redis database and setting:
@@ -79,17 +83,21 @@ https://YOUR-APP.vercel.app/api/parks
 https://YOUR-APP.vercel.app/admin
 ```
 
-## 5. Admin moderation token
+## 5. Make yourself an admin
 
-Admin endpoints require:
+Admin access is a real Supabase Auth session plus membership in the `admins` table — there's no
+shared token or self-serve "become an admin" flow, deliberately:
 
-```text
-x-admin-token: YOUR_ADMIN_TOKEN
+1. Sign up for an account through the app's own `/login` page (Sign up tab).
+2. Confirm the email if your Supabase project requires it.
+3. In the Supabase SQL Editor, find your user id and add it as an admin:
+
+```sql
+select id, email from auth.users where email = 'you@example.com';
+insert into public.admins (user_id) values ('<the uuid from above>');
 ```
 
-The `/admin` page prompts for this token at runtime and stores it in `localStorage` on the admin's own
-browser — it is never hardcoded in the client bundle. For production, still replace the single shared
-token with proper admin authentication (see hardening list below).
+4. Sign in on `/login` and visit `/admin` — the verification queue should load.
 
 ## Serverless API routes included
 
@@ -136,15 +144,15 @@ POST /api/seed
 
 ## Production hardening still needed
 
-Before a public launch, add:
+Done: real user authentication (Supabase Auth), owner sessions, admin access via a real signed-in
+account instead of a shared token, row-level security policies, optional rate limiting.
 
-- Real user authentication
-- Owner sessions
-- Admin login instead of static token
-- Rate limiting
-- CAPTCHA or abuse protection
-- Supabase Storage for images
-- Row-level security policies
-- Audit logging UI
-- Error monitoring
+Still worth adding before a public launch:
+
+- CAPTCHA or abuse protection beyond rate limiting
+- Supabase Storage for images (uploads currently return a data: URI placeholder, see
+  `api/uploads/photo.js`)
+- Audit logging UI (the `admin_actions` table is populated, but nothing displays it yet)
+- Error monitoring (Sentry or similar)
 - Custom domain setup
+- Password reset flow (Supabase Auth supports it; not yet wired into `/login`)

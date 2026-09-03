@@ -1,58 +1,29 @@
-const ADMIN_TOKEN_KEY = 'parkswift-admin-token';
-const USER_ID_KEY = 'parkswift-user-id';
-const OWNER_KEY = 'parkswift-owner';
+import { getSupabaseClient } from './supabaseClient';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
 
+async function authHeader() {
+  try {
+    const { data } = await getSupabaseClient().auth.getSession();
+    const token = data?.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    // Supabase env vars not configured, or no session yet — fine for public endpoints.
+    return {};
+  }
+}
+
 async function request(path, options = {}) {
+  const auth = await authHeader();
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers: { 'Content-Type': 'application/json', ...auth, ...(options.headers || {}) },
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || json.error) {
     throw new Error(json.error || `Request failed (${res.status})`);
   }
   return json.data;
-}
-
-export function getUserId() {
-  if (typeof window === 'undefined') return 'user_demo';
-  let id = localStorage.getItem(USER_ID_KEY);
-  if (!id) {
-    id = `user_${Date.now().toString(36)}${Math.random().toString(16).slice(2, 8)}`;
-    localStorage.setItem(USER_ID_KEY, id);
-  }
-  return id;
-}
-
-export function getStoredOwner() {
-  if (typeof window === 'undefined') return null;
-  try {
-    return JSON.parse(localStorage.getItem(OWNER_KEY));
-  } catch {
-    return null;
-  }
-}
-
-export function storeOwner(owner) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(OWNER_KEY, JSON.stringify(owner));
-}
-
-export function clearStoredOwner() {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(OWNER_KEY);
-}
-
-export function getAdminToken() {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem(ADMIN_TOKEN_KEY) || '';
-}
-
-export function storeAdminToken(token) {
-  if (typeof window === 'undefined') return;
-  if (token) localStorage.setItem(ADMIN_TOKEN_KEY, token);
-  else localStorage.removeItem(ADMIN_TOKEN_KEY);
 }
 
 export function getParks(params = {}) {
@@ -72,32 +43,38 @@ export function getAreas() {
   return request('/api/areas');
 }
 
-export function getSavedParks(userId) {
-  return request(`/api/saved?user_id=${encodeURIComponent(userId)}`);
+// The following all require a signed-in session — the server derives the
+// caller's identity from the Authorization header, never from a parameter
+// the client could spoof.
+
+export function getSavedParks() {
+  return request('/api/saved');
 }
 
-export function saveParkingLot(userId, parkingLotId) {
+export function saveParkingLot(parkingLotId) {
   return request('/api/saved', {
     method: 'POST',
-    body: JSON.stringify({ user_id: userId, parking_lot_id: parkingLotId }),
+    body: JSON.stringify({ parking_lot_id: parkingLotId }),
   });
 }
 
-export function unsaveParkingLot(userId, parkingLotId) {
-  return request(`/api/saved/${parkingLotId}?user_id=${encodeURIComponent(userId)}`, {
-    method: 'DELETE',
-  });
+export function unsaveParkingLot(parkingLotId) {
+  return request(`/api/saved/${parkingLotId}`, { method: 'DELETE' });
 }
 
-export function registerOwner({ name, email, phone, business_name }) {
+export function getMyOwnerProfile() {
+  return request('/api/owner/me');
+}
+
+export function registerOwner({ name, phone, business_name }) {
   return request('/api/owner/register', {
     method: 'POST',
-    body: JSON.stringify({ name, email, phone, business_name }),
+    body: JSON.stringify({ name, phone, business_name }),
   });
 }
 
-export function getOwnerParks(ownerId) {
-  return request(`/api/owner/parks?owner_id=${encodeURIComponent(ownerId)}`);
+export function getOwnerParks() {
+  return request('/api/owner/parks');
 }
 
 export function createOwnerPark(body) {
@@ -127,14 +104,13 @@ export function postUpdate(body) {
   return request('/api/updates', { method: 'POST', body: JSON.stringify(body) });
 }
 
-export function getAdminSubmissions(adminToken) {
-  return request('/api/admin/submissions', { headers: { 'x-admin-token': adminToken } });
+export function getAdminSubmissions() {
+  return request('/api/admin/submissions');
 }
 
-export function adminDecision(id, action, notes, adminToken) {
+export function adminDecision(id, action, notes) {
   return request(`/api/admin/parks/${id}/${action}`, {
     method: 'PATCH',
-    headers: { 'x-admin-token': adminToken },
     body: JSON.stringify({ notes: notes || '' }),
   });
 }

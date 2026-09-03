@@ -1,11 +1,14 @@
 const { ok, fail, requireMethod, parseBody, id } = require('../_lib/http');
 const { handle } = require('../_lib/supabase');
+const { requireUser } = require('../_lib/auth');
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_BASE64_BYTES = 5 * 1024 * 1024; // 5MB decoded
 
 module.exports = async (req, res) => handle(async () => {
   if (!requireMethod(req, res, ['POST'])) return;
+  const user = await requireUser(req, res);
+  if (!user) return;
   const body = await parseBody(req);
   // Serverless placeholder: production should upload to Supabase Storage.
   // The frontend can also pass image URLs directly for the lean POC.

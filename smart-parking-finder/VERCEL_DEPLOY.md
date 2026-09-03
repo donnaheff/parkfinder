@@ -39,8 +39,9 @@ Legacy URLs redirect to their Next.js equivalents:
 
 The project includes two backend options:
 
-1. `backend/server.js` — local/VPS JSON-file demo backend (same API contract as `api/*`).
-2. `api/*` — Vercel serverless API routes backed by Supabase.
+1. `backend/server.js` — local/VPS JSON-file demo backend. Predates Supabase Auth (see its
+   README) — useful for the public search/map/lots flows, not the owner/admin flows.
+2. `api/*` — Vercel serverless API routes backed by Supabase, with real authentication.
 
 For Vercel production, use the `api/*` routes with Supabase environment variables. See `VERCEL_SUPABASE_SETUP.md`.
 
@@ -90,11 +91,14 @@ Set these in Vercel Project Settings:
 ```text
 SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
-ADMIN_TOKEN=a-long-random-secret
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
-`ADMIN_TOKEN` is required (no insecure default — see `VERCEL_SUPABASE_SETUP.md`). Optionally add
-`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` to enable rate limiting on write endpoints.
+The `NEXT_PUBLIC_*` pair powers sign-in in the browser and is meant to be public — see
+`VERCEL_SUPABASE_SETUP.md` for the full explanation and how to make your account an admin.
+Optionally add `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` to enable rate limiting on
+write endpoints.
 
 Run `supabase/schema.sql` and `supabase/seed.sql` in Supabase first.
 

@@ -1,8 +1,9 @@
-const { ok, fail, requireMethod, requireAdmin, parseBody } = require('../../_lib/http');
+const { ok, fail, requireMethod, parseBody } = require('../../_lib/http');
 const { getClient, run, one, handle } = require('../../_lib/supabase');
+const { requireAdminUser } = require('../../_lib/auth');
 module.exports = async (req, res) => handle(async () => {
   if (!requireMethod(req, res, ['PATCH'])) return;
-  if (!requireAdmin(req, res)) return;
+  if (!await requireAdminUser(req, res)) return;
   const lot = await one('parking_lots', req.query.id);
   if (!lot) return fail(res, 404, 'Parking lot not found');
   const body = await parseBody(req);

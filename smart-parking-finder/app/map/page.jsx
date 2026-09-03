@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import AppShell from '../../components/AppShell';
 import LotCard from '../../components/LotCard';
+import { useSession } from '../../components/SessionProvider';
 import { useToast } from '../../components/ToastProvider';
-import { getParks, getSavedParks, getUserId, saveParkingLot } from '../../lib/api';
+import { getParks, getSavedParks, saveParkingLot } from '../../lib/api';
 import { availabilityClass } from '../../lib/format';
 
 export default function MapPage() {
@@ -14,6 +15,7 @@ export default function MapPage() {
   const [clock, setClock] = useState('');
   const [loading, setLoading] = useState(true);
   const showToast = useToast();
+  const { session } = useSession();
 
   async function load() {
     setLoading(true);
@@ -30,21 +32,22 @@ export default function MapPage() {
 
   useEffect(() => {
     load();
-    const userId = getUserId();
-    getSavedParks(userId).then((rows) => setSavedIds(new Set(rows.map((r) => r.id)))).catch(() => {});
+    if (session) {
+      getSavedParks().then((rows) => setSavedIds(new Set(rows.map((r) => r.id)))).catch(() => {});
+    }
     const tick = () => setClock(new Intl.DateTimeFormat('en-NG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date()));
     tick();
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [session]);
 
   const selectedLot = lots.find((l) => l.id === selectedId) || null;
 
   async function handleSave(lot) {
+    if (!session) { showToast('Sign in to save parking lots.'); return; }
     try {
-      const userId = getUserId();
-      await saveParkingLot(userId, lot.id);
+      await saveParkingLot(lot.id);
       setSavedIds((prev) => new Set(prev).add(lot.id));
       showToast(`${lot.name} saved to your list.`);
     } catch (err) {

@@ -1,4 +1,5 @@
 import { ToastProvider } from '../components/ToastProvider';
+import { SessionProvider } from '../components/SessionProvider';
 import ServiceWorkerRegister from '../components/ServiceWorkerRegister';
 
 export const metadata = {
@@ -19,7 +20,9 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <ServiceWorkerRegister />
-        <ToastProvider>{children}</ToastProvider>
+        <SessionProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </SessionProvider>
       </body>
     </html>
   );

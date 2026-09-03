@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AppShell from '../../components/AppShell';
 import LotCard from '../../components/LotCard';
+import { useSession } from '../../components/SessionProvider';
 import { useToast } from '../../components/ToastProvider';
-import { getParks, getSavedParks, getUserId, saveParkingLot } from '../../lib/api';
+import { getParks, getSavedParks, saveParkingLot } from '../../lib/api';
 
 export default function LotsPage() {
   const [destination, setDestination] = useState('');
@@ -15,6 +16,7 @@ export default function LotsPage() {
   const [savedIds, setSavedIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const showToast = useToast();
+  const { session } = useSession();
 
   async function runSearch(e, overrides = {}) {
     if (e) e.preventDefault();
@@ -38,15 +40,16 @@ export default function LotsPage() {
     const initialQ = params.get('q') || '';
     if (initialQ) setDestination(initialQ);
     runSearch(null, { q: initialQ });
-    const userId = getUserId();
-    getSavedParks(userId).then((rows) => setSavedIds(new Set(rows.map((r) => r.id)))).catch(() => {});
+    if (session) {
+      getSavedParks().then((rows) => setSavedIds(new Set(rows.map((r) => r.id)))).catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [session]);
 
   async function handleSave(lot) {
+    if (!session) { showToast('Sign in to save parking lots.'); return; }
     try {
-      const userId = getUserId();
-      await saveParkingLot(userId, lot.id);
+      await saveParkingLot(lot.id);
       setSavedIds((prev) => new Set(prev).add(lot.id));
       showToast(`${lot.name} saved to your list.`);
     } catch (err) {

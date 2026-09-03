@@ -1,15 +1,15 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AppShell from '../../components/AppShell';
+import { useSession } from '../../components/SessionProvider';
 import { useToast } from '../../components/ToastProvider';
 import {
-  clearStoredOwner,
   createOwnerPark,
+  getMyOwnerProfile,
   getOwnerParks,
-  getStoredOwner,
   registerOwner,
-  storeOwner,
   updateAvailability,
   updateOpenStatus,
 } from '../../lib/api';
@@ -22,30 +22,34 @@ const EMPTY_LOT_FORM = {
 };
 
 export default function OwnerPage() {
+  const { session, user, loading: sessionLoading } = useSession();
   const [owner, setOwner] = useState(null);
-  const [registerForm, setRegisterForm] = useState({ name: '', email: '', phone: '', business_name: '' });
+  const [ownerLoading, setOwnerLoading] = useState(true);
+  const [registerForm, setRegisterForm] = useState({ name: '', phone: '', business_name: '' });
   const [lotForm, setLotForm] = useState(EMPTY_LOT_FORM);
   const [lots, setLots] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [lotsLoading, setLotsLoading] = useState(false);
   const showToast = useToast();
 
   useEffect(() => {
-    const stored = getStoredOwner();
-    if (stored) {
-      setOwner(stored);
-      loadLots(stored.id);
-    }
+    if (sessionLoading) return;
+    if (!session) { setOwner(null); setOwnerLoading(false); return; }
+    setOwnerLoading(true);
+    getMyOwnerProfile()
+      .then((result) => { setOwner(result); if (result) loadLots(); })
+      .catch((err) => showToast(err.message))
+      .finally(() => setOwnerLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [session, sessionLoading]);
 
-  async function loadLots(ownerId) {
-    setLoading(true);
+  async function loadLots() {
+    setLotsLoading(true);
     try {
-      setLots(await getOwnerParks(ownerId));
+      setLots(await getOwnerParks());
     } catch (err) {
       showToast(err.message);
     } finally {
-      setLoading(false);
+      setLotsLoading(false);
     }
   }
 
@@ -53,26 +57,18 @@ export default function OwnerPage() {
     e.preventDefault();
     try {
       const result = await registerOwner(registerForm);
-      storeOwner(result);
       setOwner(result);
       showToast(`Welcome, ${result.name}. You're registered as an owner.`);
-      loadLots(result.id);
+      loadLots();
     } catch (err) {
       showToast(err.message);
     }
-  }
-
-  function handleSignOut() {
-    clearStoredOwner();
-    setOwner(null);
-    setLots([]);
   }
 
   async function handleAddLot(e) {
     e.preventDefault();
     try {
       const body = {
-        owner_id: owner.id,
         name: lotForm.name,
         area: lotForm.area,
         type: lotForm.type,
@@ -93,7 +89,7 @@ export default function OwnerPage() {
       await createOwnerPark(body);
       showToast('Parking lot submitted for verification.');
       setLotForm(EMPTY_LOT_FORM);
-      loadLots(owner.id);
+      loadLots();
     } catch (err) {
       showToast(err.message);
     }
@@ -128,17 +124,21 @@ export default function OwnerPage() {
         <p className="eyebrow">Parking owner console</p>
         <h1>List and manage your car parks.</h1>
         <p className="lead">Register once, then submit lots for admin verification and keep live availability up to date — all backed by the real API.</p>
-        {owner && (
-          <div className="actions">
-            <span className="pill">Signed in as {owner.name}</span>
-            <button className="btn secondary" type="button" onClick={handleSignOut}>Sign out</button>
-          </div>
-        )}
+        {owner && <div className="actions"><span className="pill">Signed in as {owner.name}</span></div>}
       </section>
 
-      {!owner ? (
+      {sessionLoading || ownerLoading ? (
+        <section className="panel card"><p className="muted">Loading…</p></section>
+      ) : !session ? (
+        <section className="panel card">
+          <h2>Sign in to continue</h2>
+          <p className="muted">You need an account to register as an owner and manage listings.</p>
+          <div className="actions"><Link className="btn primary" href="/login">Sign in</Link></div>
+        </section>
+      ) : !owner ? (
         <section className="panel card">
           <h2>Register as an owner</h2>
+          <p className="muted">Signed in as {user?.email}.</p>
           <form className="form-stack" onSubmit={handleRegister}>
             <label>Full name
               <input required value={registerForm.name} onChange={(e) => setRegisterForm((p) => ({ ...p, name: e.target.value }))} />
@@ -146,14 +146,9 @@ export default function OwnerPage() {
             <label>Business name
               <input value={registerForm.business_name} onChange={(e) => setRegisterForm((p) => ({ ...p, business_name: e.target.value }))} />
             </label>
-            <div className="grid two">
-              <label>Email
-                <input type="email" required value={registerForm.email} onChange={(e) => setRegisterForm((p) => ({ ...p, email: e.target.value }))} />
-              </label>
-              <label>Phone
-                <input required value={registerForm.phone} onChange={(e) => setRegisterForm((p) => ({ ...p, phone: e.target.value }))} />
-              </label>
-            </div>
+            <label>Phone
+              <input required value={registerForm.phone} onChange={(e) => setRegisterForm((p) => ({ ...p, phone: e.target.value }))} />
+            </label>
             <button className="btn primary" type="submit">Register</button>
           </form>
         </section>
@@ -199,10 +194,10 @@ export default function OwnerPage() {
             <div className="card-header">
               <div>
                 <h2>Your parking lots</h2>
-                <p className="muted">{loading ? 'Loading…' : `${lots.length} listed`}</p>
+                <p className="muted">{lotsLoading ? 'Loading…' : `${lots.length} listed`}</p>
               </div>
             </div>
-            {lots.length === 0 && !loading && <p className="muted">No lots yet — add one from the form.</p>}
+            {lots.length === 0 && !lotsLoading && <p className="muted">No lots yet — add one from the form.</p>}
             {lots.length > 0 && (
               <table className="data-table">
                 <thead>

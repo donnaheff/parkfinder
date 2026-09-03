@@ -1,44 +1,35 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AppShell from '../../components/AppShell';
+import { useSession } from '../../components/SessionProvider';
 import { useToast } from '../../components/ToastProvider';
-import { adminDecision, getAdminSubmissions, getAdminToken, storeAdminToken } from '../../lib/api';
+import { adminDecision, getAdminSubmissions } from '../../lib/api';
 import { verificationLabel } from '../../lib/format';
 
 export default function AdminPage() {
-  const [token, setToken] = useState('');
+  const { session, loading: sessionLoading } = useSession();
   const [submissions, setSubmissions] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const showToast = useToast();
 
   useEffect(() => {
-    setToken(getAdminToken());
-  }, []);
-
-  async function loadSubmissions(activeToken) {
+    if (sessionLoading) return;
+    if (!session) { setLoading(false); return; }
     setLoading(true);
     setError('');
-    try {
-      setSubmissions(await getAdminSubmissions(activeToken));
-    } catch (err) {
-      setError(err.message);
-      setSubmissions([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleTokenSubmit(e) {
-    e.preventDefault();
-    storeAdminToken(token);
-    loadSubmissions(token);
-  }
+    getAdminSubmissions()
+      .then(setSubmissions)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, sessionLoading]);
 
   async function decide(id, action) {
     try {
-      await adminDecision(id, action, '', token);
+      await adminDecision(id, action, '');
       showToast(`Listing ${action.replace('-', ' ')}d.`);
       setSubmissions((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
@@ -51,51 +42,46 @@ export default function AdminPage() {
       <section className="panel page-hero">
         <p className="eyebrow">Moderation</p>
         <h1>Admin verification queue</h1>
-        <p className="lead">Review owner-submitted car parks before they go live. Requires the admin token configured on the API (env var <code>ADMIN_TOKEN</code>).</p>
-        <form className="search-card" style={{ gridTemplateColumns: '1fr auto' }} onSubmit={handleTokenSubmit}>
-          <label className="field">
-            <span>🔑</span>
-            <input
-              type="password"
-              placeholder="Admin token"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-            />
-          </label>
-          <button className="btn primary" type="submit">Load submissions</button>
-        </form>
+        <p className="lead">Review owner-submitted car parks before they go live. Restricted to accounts listed in the <code>admins</code> table.</p>
       </section>
 
-      <section className="panel card">
-        <div className="card-header">
-          <div>
-            <h2>Pending submissions</h2>
-            <p className="muted">{loading ? 'Loading…' : error ? error : `${submissions.length} awaiting review`}</p>
+      {!sessionLoading && !session ? (
+        <section className="panel card">
+          <h2>Sign in to continue</h2>
+          <div className="actions"><Link className="btn primary" href="/login">Sign in</Link></div>
+        </section>
+      ) : (
+        <section className="panel card">
+          <div className="card-header">
+            <div>
+              <h2>Pending submissions</h2>
+              <p className="muted">{loading ? 'Loading…' : error ? error : `${submissions.length} awaiting review`}</p>
+            </div>
           </div>
-        </div>
-        {submissions.map((lot) => (
-          <div key={lot.id} className="card" style={{ marginBottom: 12 }}>
-            <div className="card-header">
-              <div>
-                <h3>{lot.name}</h3>
-                <div className="muted">{lot.area} · {lot.address}</div>
+          {submissions.map((lot) => (
+            <div key={lot.id} className="card" style={{ marginBottom: 12 }}>
+              <div className="card-header">
+                <div>
+                  <h3>{lot.name}</h3>
+                  <div className="muted">{lot.area} · {lot.address}</div>
+                </div>
+                <span className="badge">{verificationLabel(lot.verification_status)}</span>
               </div>
-              <span className="badge">{verificationLabel(lot.verification_status)}</span>
+              <div className="lot-meta">
+                <span>🅿️ {lot.available_spaces}/{lot.capacity} spaces</span>
+                <span>🚶 {lot.walk_meters}m</span>
+                <span>🚗 {lot.drive_minutes} min</span>
+              </div>
+              <div className="actions">
+                <button className="btn primary" type="button" onClick={() => decide(lot.id, 'approve')}>Approve</button>
+                <button className="btn secondary" type="button" onClick={() => decide(lot.id, 'request-info')}>Request info</button>
+                <button className="btn danger" type="button" onClick={() => decide(lot.id, 'reject')}>Reject</button>
+              </div>
             </div>
-            <div className="lot-meta">
-              <span>🅿️ {lot.available_spaces}/{lot.capacity} spaces</span>
-              <span>🚶 {lot.walk_meters}m</span>
-              <span>🚗 {lot.drive_minutes} min</span>
-            </div>
-            <div className="actions">
-              <button className="btn primary" type="button" onClick={() => decide(lot.id, 'approve')}>Approve</button>
-              <button className="btn secondary" type="button" onClick={() => decide(lot.id, 'request-info')}>Request info</button>
-              <button className="btn danger" type="button" onClick={() => decide(lot.id, 'reject')}>Reject</button>
-            </div>
-          </div>
-        ))}
-        {!loading && !error && submissions.length === 0 && <p className="muted">Nothing pending review.</p>}
-      </section>
+          ))}
+          {!loading && !error && submissions.length === 0 && <p className="muted">Nothing pending review.</p>}
+        </section>
+      )}
     </AppShell>
   );
 }
