@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pricing — ParkSwift</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body data-page="pricing">
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/"><span class="brand-mark">P</span><span>ParkSwift</span></a>
+      <nav class="nav-links"><a data-nav="home" href="/">Home</a><a data-nav="map" href="/map">Map</a><a data-nav="lots" href="/lots">Parking lots</a><a data-nav="pricing" href="pricing.html">Pricing</a><a data-nav="recommendations" href="recommendations.html">Modules</a><span class="status-pill"><span class="tier-label">Free</span> tier</span></nav>
+    </header>
+
+    <section class="panel page-hero">
+      <p class="eyebrow">Free and Premium tiers</p>
+      <h1>Choose the right parking experience.</h1>
+      <p class="lead">The prototype saves your selected plan locally in the browser so you can test gated features across pages.</p>
+    </section>
+
+    <section class="grid two">
+      <article class="price-card" data-tier-card="free">
+        <span class="badge free">Free</span>
+        <h2>Free finder</h2>
+        <div class="price">₦0 <small>/ month</small></div>
+        <p class="muted">For occasional drivers who need simple discovery and payment.</p>
+        <ul class="feature-list">
+          <li>Live parking lot list with simulated updates</li>
+          <li>Basic destination, vehicle, and walking filters</li>
+          <li>Basic route action</li>
+          <li>Mobile payment checkout</li>
+          <li>Reservations up to 3 hours</li>
+          <li class="locked">Service fee applies</li>
+        </ul>
+        <div class="actions"><button class="btn secondary" data-set-tier="free">Use Free</button></div>
+      </article>
+
+      <article class="price-card featured" data-tier-card="premium">
+        <span class="badge premium">Premium</span>
+        <h2>Premium mobility</h2>
+        <div class="price">₦2,500 <small>/ month</small></div>
+        <p class="muted">For commuters and fleets who need speed, certainty, and traffic-aware parking.</p>
+        <ul class="feature-list">
+          <li>Everything in Free</li>
+          <li>Satellite congestion heatmap</li>
+          <li>AI best-space recommendation</li>
+          <li>Dynamic price alerts</li>
+          <li>Priority bay hold</li>
+          <li>Reservations up to 24 hours</li>
+          <li>No reservation service fee</li>
+          <li>Premium route guidance to reduce fuel waste</li>
+        </ul>
+        <div class="actions"><button class="btn primary" data-set-tier="premium">Upgrade to Premium</button></div>
+      </article>
+    </section>
+
+    <section class="panel card" style="margin-top:20px">
+      <h2>How tier gating works in the app</h2>
+      <p class="muted">Free users can use core parking discovery and payment. Premium-only buttons remain visible so users understand the upgrade value; selecting Premium unlocks those interactions immediately in this prototype.</p>
+      <div class="actions"><a class="btn primary" href="/map">Test map features</a><a class="btn secondary" href="/lots">Test lot features</a></div>
+    </section>
+
+    <nav class="bottom-nav"><a data-nav="home" href="/">Home</a><a data-nav="map" href="/map">Map</a><a data-nav="lots" href="/lots">Lots</a><a data-nav="pricing" href="pricing.html">Pricing</a></nav>
+  </main>
+  <script src="assets/env.js"></script><script src="assets/data.js"></script><script src="assets/app.js"></script>
+</body>
+</html>

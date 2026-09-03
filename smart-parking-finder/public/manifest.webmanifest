@@ -1,0 +1,17 @@
+{
+  "name": "ParkSwift Lite",
+  "short_name": "ParkSwift",
+  "description": "Lean park finder POC for discovering and listing car parks.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#1877f2",
+  "icons": [
+    {
+      "src": "media/hero-smart-parking-lagos.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

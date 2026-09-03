@@ -2,11 +2,14 @@
   "name": "parkswift-lite",
   "version": "0.1.0",
   "private": true,
-  "description": "ParkSwift Lite lean park finder POC and investor demo.",
+  "description": "ParkSwift smart parking finder — Next.js client-rendered app backed by the Supabase-powered API.",
   "scripts": {
-    "start": "node backend/server.js",
-    "dev": "node backend/server.js",
-    "vercel-build": "node -e \"console.log('Static ParkSwift deployment: no build step required')\""
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "start": "npx --yes serve@latest out -l 3000",
+    "legacy-backend": "node backend/server.js"
   },
   "keywords": [
     "parking",
@@ -14,5 +17,23 @@
     "pwa",
     "smart-city"
   ],
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.114.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.3",
+    "mapbox-gl": "^3.29.0",
+    "next": "^16.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-map-gl": "^8.1.3",
+    "resend": "^6.25.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.4",
+    "vitest": "^5.0.0"
+  }
 }

@@ -1,31 +1,47 @@
-# Deploy ParkSwift Lite to Vercel
+# Deploy ParkSwift to Vercel
 
-This project is now Vercel-ready as a static POC deployment.
+This project is a Next.js app (App Router, fully client-rendered — `output: 'export'`) plus a set of
+standalone Vercel serverless functions in `api/*` backed by Supabase. Marketing/pitch pages remain
+static HTML served from `public/`.
 
 ## What will deploy
 
-Default route:
+Core app routes (Next.js, client-rendered):
 
 ```text
-/ -> poc.html
+/          Home — live search
+/map       Live parking map
+/lots      Full lot list with filters
+/areas     Neighborhood rollup
+/updates   Community status reports
+/owner     Owner registration + lot management
+/operator  Operator occupancy console
+/admin     Admin verification queue
 ```
 
-Extra routes:
+Marketing/static routes (served from `public/`, unchanged):
 
 ```text
-/poc -> poc.html
-/app -> index.html
-/pitch -> investor-pitch.html
+/pitch  -> investor-pitch.html
 /phases -> phases.html
-/backend-demo -> backend-connected.html
+... plus every other *.html file in public/, at its own filename
+```
+
+Legacy URLs redirect to their Next.js equivalents:
+
+```text
+/poc          -> /
+/app          -> /
+/backend-demo -> /admin
 ```
 
 ## Backend note
 
-The project now includes two backend options:
+The project includes two backend options:
 
-1. `backend/server.js` — local/VPS JSON-file demo backend.
-2. `api/*` — Vercel serverless API routes backed by Supabase.
+1. `backend/server.js` — local/VPS JSON-file demo backend. Predates Supabase Auth (see its
+   README) — useful for the public search/map/lots flows, not the owner/admin flows.
+2. `api/*` — Vercel serverless API routes backed by Supabase, with real authentication.
 
 For Vercel production, use the `api/*` routes with Supabase environment variables. See `VERCEL_SUPABASE_SETUP.md`.
 
@@ -35,6 +51,7 @@ From this folder:
 
 ```bash
 cd smart-parking-finder
+npm install
 npx vercel login
 npx vercel
 ```
@@ -51,27 +68,21 @@ npx vercel --prod
 2. Go to Vercel Dashboard.
 3. Click **Add New Project**.
 4. Import the GitHub repository.
-5. Set framework preset to **Other**.
-6. Leave build command empty or use:
+5. Framework preset **Next.js** is auto-detected.
+6. Build command: `npm run build` (default).
+7. Deploy.
+
+## Local development
 
 ```bash
-npm run vercel-build
+cd smart-parking-finder
+npm install
+npm run dev
 ```
 
-7. Set output directory to the project root or leave blank.
-8. Deploy.
-
-## Google AdSense note
-
-Before public production deployment, replace these placeholders in `poc.html`:
-
-```text
-ca-pub-REPLACE_WITH_YOUR_PUBLISHER_ID
-REPLACE_WITH_FEED_SLOT_ID
-REPLACE_WITH_SIDEBAR_SLOT_ID
-```
-
-Google ads will only show after your AdSense account/domain is approved.
+This starts the Next.js dev server. Point it at a running API (either `backend/server.js` locally, or
+the deployed `api/*` routes) by setting `NEXT_PUBLIC_API_BASE` — it defaults to same-origin, which is
+what production uses.
 
 ## Vercel backend environment variables
 
@@ -80,8 +91,16 @@ Set these in Vercel Project Settings:
 ```text
 SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
-ADMIN_TOKEN=change-this-admin-token
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
+
+The `NEXT_PUBLIC_*` pair powers sign-in in the browser and is meant to be public — see
+`VERCEL_SUPABASE_SETUP.md` for the full explanation and how to make your account an admin.
+Add `NEXT_PUBLIC_MAPBOX_TOKEN` (free tier at mapbox.com) for the real map, destination
+autocomplete, and owner-address geocoding — without it those features degrade gracefully rather
+than breaking. Optionally add `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` to enable rate limiting on
+write endpoints.
 
 Run `supabase/schema.sql` and `supabase/seed.sql` in Supabase first.
 
@@ -93,3 +112,27 @@ For local demos without Supabase:
 cd smart-parking-finder/backend
 PORT=8787 ADMIN_TOKEN=change-this-token node server.js
 ```
+
+Then, in another terminal:
+
+```bash
+cd smart-parking-finder
+NEXT_PUBLIC_API_BASE=http://localhost:8787 npm run dev
+```
+
+## Testing
+
+```bash
+npm run lint    # ESLint
+npm test        # Vitest — unit tests for lib/format.js and api/_lib/parking.js
+npx playwright test        # e2e — smoke + axe-core accessibility scan, no credentials needed
+```
+
+`npx playwright test` also picks up `e2e/auth-flows.spec.js`, which covers owner
+register → submit → admin approve and reserve → cancel against a *real* Supabase
+test project (the local JSON backend predates the Auth/JWT rewrite and can't serve
+those routes). It self-skips unless `E2E_BASE_URL`, `E2E_OWNER_EMAIL`,
+`E2E_OWNER_PASSWORD`, `E2E_ADMIN_EMAIL`, and `E2E_ADMIN_PASSWORD` are all set — see
+the top of that file for what each needs. CI (`.github/workflows/ci.yml`) runs lint,
+unit tests, build, and the e2e suite (smoke always, auth-flows only if those five are
+configured as repo secrets) on every PR and push to `main`.
