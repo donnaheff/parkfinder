@@ -119,3 +119,20 @@ Then, in another terminal:
 cd smart-parking-finder
 NEXT_PUBLIC_API_BASE=http://localhost:8787 npm run dev
 ```
+
+## Testing
+
+```bash
+npm run lint    # ESLint
+npm test        # Vitest — unit tests for lib/format.js and api/_lib/parking.js
+npx playwright test        # e2e — e2e/smoke.spec.js, no credentials needed
+```
+
+`npx playwright test` also picks up `e2e/auth-flows.spec.js`, which covers owner
+register → submit → admin approve and reserve → cancel against a *real* Supabase
+test project (the local JSON backend predates the Auth/JWT rewrite and can't serve
+those routes). It self-skips unless `E2E_BASE_URL`, `E2E_OWNER_EMAIL`,
+`E2E_OWNER_PASSWORD`, `E2E_ADMIN_EMAIL`, and `E2E_ADMIN_PASSWORD` are all set — see
+the top of that file for what each needs. CI (`.github/workflows/ci.yml`) runs lint,
+unit tests, build, and the e2e suite (smoke always, auth-flows only if those five are
+configured as repo secrets) on every PR and push to `main`.

@@ -61,3 +61,25 @@ export function verificationLabel(status) {
     default: return 'Pending review';
   }
 }
+
+export function reservationStatusLabel(status) {
+  switch (status) {
+    case 'held': return 'Held';
+    case 'awaiting_payment': return 'Awaiting payment';
+    case 'confirmed': return 'Confirmed';
+    case 'cancelled': return 'Cancelled';
+    case 'completed': return 'Completed';
+    default: return status;
+  }
+}
+
+// Mirrors the countdown text shown by <CountdownBadge> (app/reservations/page.jsx)
+// so the held-hold expiry formatting can be unit tested without rendering React.
+export function holdCountdownText(expiresAt, now = Date.now()) {
+  if (!expiresAt) return null;
+  const remainingMs = new Date(expiresAt).getTime() - now;
+  if (remainingMs <= 0) return 'Expiring…';
+  const mins = Math.floor(remainingMs / 60000);
+  const secs = Math.floor((remainingMs % 60000) / 1000);
+  return `Expires in ${mins}:${String(secs).padStart(2, '0')}`;
+}

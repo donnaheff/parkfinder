@@ -6,17 +6,7 @@ import AppShell from '../../components/AppShell';
 import { useSession } from '../../components/SessionProvider';
 import { useToast } from '../../components/ToastProvider';
 import { cancelReservation, confirmReservation, getReservations } from '../../lib/api';
-
-function statusLabel(status) {
-  switch (status) {
-    case 'held': return 'Held';
-    case 'awaiting_payment': return 'Awaiting payment';
-    case 'confirmed': return 'Confirmed';
-    case 'cancelled': return 'Cancelled';
-    case 'completed': return 'Completed';
-    default: return status;
-  }
-}
+import { holdCountdownText, reservationStatusLabel } from '../../lib/format';
 
 function CountdownBadge({ expiresAt }) {
   const [now, setNow] = useState(() => Date.now());
@@ -24,12 +14,9 @@ function CountdownBadge({ expiresAt }) {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-  if (!expiresAt) return null;
-  const remainingMs = new Date(expiresAt).getTime() - now;
-  if (remainingMs <= 0) return <span className="reservation-countdown">Expiring…</span>;
-  const mins = Math.floor(remainingMs / 60000);
-  const secs = Math.floor((remainingMs % 60000) / 1000);
-  return <span className="reservation-countdown">Expires in {mins}:{String(secs).padStart(2, '0')}</span>;
+  const text = holdCountdownText(expiresAt, now);
+  if (!text) return null;
+  return <span className="reservation-countdown">{text}</span>;
 }
 
 export default function ReservationsPage() {
@@ -103,7 +90,7 @@ export default function ReservationsPage() {
                   <h3>{r.parking_lots?.name || 'Parking lot'}</h3>
                   <div className="muted">{r.parking_lots?.area}</div>
                 </div>
-                <span className="badge">{statusLabel(r.status)}</span>
+                <span className="badge">{reservationStatusLabel(r.status)}</span>
               </div>
               <div className="lot-meta">
                 <span>🕐 {new Date(r.start_time).toLocaleString()} → {new Date(r.end_time).toLocaleString()}</span>
