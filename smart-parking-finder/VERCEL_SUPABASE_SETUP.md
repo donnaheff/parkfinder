@@ -89,6 +89,16 @@ hold keeps its space marked unavailable (available_spaces was decremented atomic
 was created, and only the sweep — or the user manually confirming or cancelling — puts it back), so
 infrequent sweeping is a real availability-accuracy problem on Hobby, not just a cosmetic one.
 
+For email notifications (reservation hold confirmations, admin approve/reject/request-info updates
+to owners) add a free [Resend](https://resend.com) account and verify a sending domain, then set:
+
+```text
+RESEND_API_KEY=YOUR_RESEND_API_KEY
+EMAIL_FROM=ParkSwift <notifications@yourdomain.com>
+```
+
+Without `RESEND_API_KEY`, the API still works — emails just don't send (logged, not thrown).
+
 ## 3. Deploy to Vercel
 
 ```bash

@@ -1,7 +1,8 @@
 const { ok, fail, requireMethod, parseBody } = require('./_lib/http');
-const { getClient, run, handle } = require('./_lib/supabase');
+const { getClient, run, one, handle } = require('./_lib/supabase');
 const { requireUser } = require('./_lib/auth');
 const { rateLimit } = require('./_lib/ratelimit');
+const { sendReservationHoldEmail } = require('./_lib/email');
 
 const HOLD_MINUTES = 10;
 
@@ -37,5 +38,17 @@ module.exports = async (req, res) => handle(async () => {
       p_hold_minutes: HOLD_MINUTES,
     })
   );
+
+  if (user.email) {
+    const lot = await one('parking_lots', reservation.lot_id);
+    await sendReservationHoldEmail({
+      to: user.email,
+      lotName: lot?.name || 'your parking lot',
+      startTime: reservation.start_time,
+      endTime: reservation.end_time,
+      holdExpiresAt: reservation.hold_expires_at,
+    });
+  }
+
   ok(res, reservation, 201);
 }, res);
