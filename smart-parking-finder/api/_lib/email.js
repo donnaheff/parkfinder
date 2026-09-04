@@ -57,4 +57,18 @@ ${notes ? `<p>Notes from the reviewer: ${notes}</p>` : ''}`,
   });
 }
 
-module.exports = { sendEmail, sendReservationHoldEmail, sendAdminDecisionEmail };
+// Guest checkout (Phase 11) has no "My Reservations" page to send someone
+// back to — there's no account to sign into — so this is a receipt, not an
+// action prompt like sendReservationHoldEmail above.
+async function sendGuestReservationEmail({ to, lotName, startTime, endTime, confirmed, checkoutUrl }) {
+  return sendEmail({
+    to,
+    subject: `Your parking reservation at ${lotName}`,
+    html: confirmed
+      ? `<p>Your space at <strong>${lotName}</strong> is confirmed, from ${fmt(startTime)} to ${fmt(endTime)}.</p>`
+      : `<p>We've held a space for you at <strong>${lotName}</strong>, from ${fmt(startTime)} to ${fmt(endTime)}.</p>
+<p><a href="${checkoutUrl}">Complete payment</a> to confirm it — the hold expires shortly if payment isn't completed.</p>`,
+  });
+}
+
+module.exports = { sendEmail, sendReservationHoldEmail, sendAdminDecisionEmail, sendGuestReservationEmail };

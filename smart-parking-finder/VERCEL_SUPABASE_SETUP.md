@@ -149,6 +149,16 @@ public `lot-photos` Storage bucket with its access policies. Just make sure you 
 `schema.sql` — if your project was set up before Phase 5, re-run it in the SQL Editor (it's
 idempotent) to pick up the `reviews` table and the storage bucket/policies.
 
+Guest checkout (reserve without an account) needs no extra env vars either — `reservations.user_id`
+is nullable with `guest_name`/`guest_email`/`guest_phone` columns instead. A guest reservation
+resolves fully in one request (free lots confirm immediately, priced lots get a Flutterwave checkout
+link back right away) since there's no session to come back and confirm/pay from later — it's
+confirmed by email/SMS receipt only, with no "my reservations" view. If your project predates Phase
+11, re-run `schema.sql`: it explicitly drops the old 5-argument `create_reservation_hold` signature
+before recreating it with the 3 new guest_* parameters, since Postgres treats a changed parameter
+list as a new overload rather than a replacement — without that drop you'd end up with two
+ambiguous versions of the function.
+
 ## 3. Deploy to Vercel
 
 ```bash

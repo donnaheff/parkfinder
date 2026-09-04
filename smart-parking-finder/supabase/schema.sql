@@ -182,18 +182,32 @@ create policy "users can manage their own saved_parks"
 
 -- Phase 3: reservations (hold -> confirm -> cancel/complete). 'awaiting_payment'
 -- sits between held and confirmed for the Phase 8 Flutterwave integration below.
+-- Phase 11: user_id is nullable — a guest checkout (no account) fills in
+-- guest_name/guest_email/guest_phone instead; the check constraint below
+-- requires one or the other.
 create table if not exists public.reservations (
   id uuid primary key default gen_random_uuid(),
   lot_id uuid not null references public.parking_lots(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  guest_name text,
+  guest_email text,
+  guest_phone text,
   start_time timestamptz not null,
   end_time timestamptz not null,
   status text not null default 'held' check (status in ('held','awaiting_payment','confirmed','cancelled','completed')),
   hold_expires_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (end_time > start_time)
+  check (end_time > start_time),
+  check (user_id is not null or guest_email is not null)
 );
+alter table public.reservations alter column user_id drop not null;
+alter table public.reservations add column if not exists guest_name text;
+alter table public.reservations add column if not exists guest_email text;
+alter table public.reservations add column if not exists guest_phone text;
+alter table public.reservations drop constraint if exists reservations_user_id_or_guest_check;
+alter table public.reservations add constraint reservations_user_id_or_guest_check
+  check (user_id is not null or guest_email is not null);
 create index if not exists reservations_user_idx on public.reservations(user_id);
 create index if not exists reservations_lot_idx on public.reservations(lot_id);
 create index if not exists reservations_status_idx on public.reservations(status);
@@ -224,12 +238,22 @@ create policy "users can read their own reservations"
 -- inserts the reservation row, so two simultaneous requests for the last
 -- space can't both succeed. Runs as the function owner (security definer)
 -- with a fixed search_path so it can't be tricked by a session-local one.
+--
+-- Phase 11 added 3 trailing guest_* params. CREATE OR REPLACE only replaces
+-- a function with the exact same argument *types* — a changed parameter
+-- list creates a second overload instead, which can make PostgREST's
+-- named-parameter RPC calls ambiguous. Drop the old 5-arg signature first
+-- so re-running this on an existing project ends up with just one version.
+drop function if exists public.create_reservation_hold(uuid, uuid, timestamptz, timestamptz, integer);
 create or replace function public.create_reservation_hold(
   p_lot_id uuid,
   p_user_id uuid,
   p_start_time timestamptz,
   p_end_time timestamptz,
-  p_hold_minutes integer default 10
+  p_hold_minutes integer default 10,
+  p_guest_name text default null,
+  p_guest_email text default null,
+  p_guest_phone text default null
 ) returns public.reservations
 language plpgsql
 security definer
@@ -241,6 +265,9 @@ declare
 begin
   if p_end_time <= p_start_time then
     raise exception 'end_time must be after start_time' using errcode = 'P0001';
+  end if;
+  if p_user_id is null and p_guest_email is null then
+    raise exception 'A signed-in user or a guest email is required' using errcode = 'P0001';
   end if;
 
   select * into v_lot from public.parking_lots where id = p_lot_id for update;
@@ -258,8 +285,8 @@ begin
     set available_spaces = available_spaces - 1, updated_at = now()
     where id = p_lot_id;
 
-  insert into public.reservations (lot_id, user_id, start_time, end_time, status, hold_expires_at)
-  values (p_lot_id, p_user_id, p_start_time, p_end_time, 'held', now() + (p_hold_minutes || ' minutes')::interval)
+  insert into public.reservations (lot_id, user_id, guest_name, guest_email, guest_phone, start_time, end_time, status, hold_expires_at)
+  values (p_lot_id, p_user_id, p_guest_name, p_guest_email, p_guest_phone, p_start_time, p_end_time, 'held', now() + (p_hold_minutes || ' minutes')::interval)
   returning * into v_reservation;
 
   return v_reservation;
@@ -267,8 +294,12 @@ end;
 $$;
 
 -- Confirms a held reservation (clears the expiry so the cron sweep leaves it
--- alone). Scoped to the owning user unless p_user_id is null (used by admin
--- tooling later, not the current API).
+-- alone). Scoped to the owning user unless p_user_id is null — that bypass
+-- is only ever invoked from trusted server-side code (immediately after
+-- creating a guest hold in the same request, never from client input), not
+-- exposed as something a caller can pass. IS DISTINCT FROM (not <>) so a
+-- guest reservation (user_id null) can't be "matched" by an attacker
+-- passing a real p_user_id, since NULL <> anything is NULL/skipped, not true.
 create or replace function public.confirm_reservation(
   p_reservation_id uuid,
   p_user_id uuid
@@ -284,7 +315,7 @@ begin
   if not found then
     raise exception 'Reservation not found' using errcode = 'P0002';
   end if;
-  if v_reservation.user_id <> p_user_id then
+  if p_user_id is not null and v_reservation.user_id is distinct from p_user_id then
     raise exception 'Not your reservation' using errcode = 'P0001';
   end if;
   if v_reservation.status <> 'held' then
@@ -302,6 +333,10 @@ $$;
 
 -- Releases a hold or confirmed reservation back to available_spaces.
 -- p_user_id null bypasses the ownership check (used by the expiry sweep).
+-- IS DISTINCT FROM (not <>): a guest reservation's user_id is null, and
+-- NULL <> anything evaluates to NULL (skipped by plpgsql's IF, not raised)
+-- — which would otherwise let any signed-in caller cancel any guest's
+-- reservation. IS DISTINCT FROM treats null as a real, comparable value.
 create or replace function public.release_reservation(
   p_reservation_id uuid,
   p_user_id uuid default null
@@ -317,7 +352,7 @@ begin
   if not found then
     raise exception 'Reservation not found' using errcode = 'P0002';
   end if;
-  if p_user_id is not null and v_reservation.user_id <> p_user_id then
+  if p_user_id is not null and v_reservation.user_id is distinct from p_user_id then
     raise exception 'Not your reservation' using errcode = 'P0001';
   end if;
   if v_reservation.status not in ('held', 'awaiting_payment', 'confirmed') then
@@ -377,6 +412,8 @@ $$;
 -- Phase 8: Flutterwave payments. Moves a held reservation into
 -- 'awaiting_payment' with its own (shorter) expiry, independent of
 -- hold_expires_at, so an abandoned checkout doesn't hold a space forever.
+-- Same p_user_id-null-bypass-for-trusted-server-code pattern as
+-- confirm_reservation above (guest checkout paying immediately).
 create or replace function public.mark_awaiting_payment(
   p_reservation_id uuid,
   p_user_id uuid,
@@ -396,7 +433,7 @@ begin
   if not found then
     raise exception 'Reservation not found' using errcode = 'P0002';
   end if;
-  if v_reservation.user_id <> p_user_id then
+  if p_user_id is not null and v_reservation.user_id is distinct from p_user_id then
     raise exception 'Not your reservation' using errcode = 'P0001';
   end if;
   if v_reservation.status <> 'held' then

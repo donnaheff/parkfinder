@@ -43,4 +43,13 @@ async function sendAdminDecisionSms({ to, lotName, decision }) {
   return sendSms({ to, body: `ParkSwift: your listing "${lotName}" was ${DECISION_TEXT[decision] || decision}.` });
 }
 
-module.exports = { sendSms, sendReservationHoldSms, sendAdminDecisionSms };
+async function sendGuestReservationSms({ to, lotName, confirmed, checkoutUrl }) {
+  return sendSms({
+    to,
+    body: confirmed
+      ? `ParkSwift: your space at ${lotName} is confirmed.`
+      : `ParkSwift: complete payment to confirm your space at ${lotName}: ${checkoutUrl}`,
+  });
+}
+
+module.exports = { sendSms, sendReservationHoldSms, sendAdminDecisionSms, sendGuestReservationSms };

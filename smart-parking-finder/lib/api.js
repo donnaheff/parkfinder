@@ -127,10 +127,10 @@ export function getReservations() {
   return request('/api/reservations');
 }
 
-export function createReservation({ parking_lot_id, start_time, end_time }) {
+export function createReservation({ parking_lot_id, start_time, end_time, guest_name, guest_email, guest_phone }) {
   return request('/api/reservations', {
     method: 'POST',
-    body: JSON.stringify({ parking_lot_id, start_time, end_time }),
+    body: JSON.stringify({ parking_lot_id, start_time, end_time, guest_name, guest_email, guest_phone }),
   });
 }
 
