@@ -105,6 +105,26 @@ EMAIL_FROM=ParkSwift <notifications@yourdomain.com>
 
 Without `RESEND_API_KEY`, the API still works — emails just don't send (logged, not thrown).
 
+For payments, add a free [Flutterwave](https://flutterwave.com) merchant account, grab your **live**
+(or **test**, for a sandbox) secret key and webhook secret hash, then set:
+
+```text
+FLUTTERWAVE_SECRET_KEY=YOUR_FLUTTERWAVE_SECRET_KEY
+FLUTTERWAVE_SECRET_HASH=A_LONG_RANDOM_STRING_YOU_ALSO_PASTE_INTO_FLUTTERWAVE'S_WEBHOOK_SETTINGS
+APP_BASE_URL=https://YOUR-APP.vercel.app
+NEXT_PUBLIC_PAYMENTS_ENABLED=true
+```
+
+`FLUTTERWAVE_SECRET_HASH` is a value you choose yourself (e.g. `openssl rand -hex 32`) and paste into
+both places — Flutterwave sends it back verbatim on every webhook call as the `verif-hash` header, so
+`api/webhooks/flutterwave.js` can reject anything that doesn't match before trusting the payload.
+Register `https://YOUR-APP.vercel.app/api/webhooks/flutterwave` as the webhook URL in your Flutterwave
+dashboard. Without `FLUTTERWAVE_SECRET_KEY`, `/api/reservations/:id/pay` returns 503 for any lot with a
+price set — free lots (the default; see `parking_lots.price_per_hour`) confirm instantly regardless,
+no payment step involved. `NEXT_PUBLIC_PAYMENTS_ENABLED` is baked in at build time (this is a static
+client-rendered app) and only controls whether the UI shows payment-related copy — redeploy after
+changing it.
+
 Reviews and real photo uploads need no extra env vars — `supabase/schema.sql` already creates the
 `reviews` table (one review per user per lot, enforced by a unique constraint; `parking_lots.rating`
 is kept in sync by a trigger that recomputes the average on every insert/update/delete) and the
@@ -165,6 +185,18 @@ POST   /api/reviews
 DELETE /api/reviews/:id
 ```
 
+### Reservations
+
+```text
+GET   /api/reservations
+POST  /api/reservations
+PATCH /api/reservations/:id/confirm
+PATCH /api/reservations/:id/cancel
+POST  /api/reservations/:id/pay
+POST  /api/webhooks/flutterwave
+GET   /api/cron/release-holds
+```
+
 ### Owner
 
 ```text
@@ -196,13 +228,12 @@ POST /api/seed
 
 Done: real user authentication (Supabase Auth), owner sessions, admin access via a real signed-in
 account instead of a shared token, row-level security policies, optional rate limiting, reservations
-with atomic holds, email notifications, reviews/ratings, and Supabase Storage for lot photos.
+with atomic holds, email notifications, reviews/ratings, Supabase Storage for lot photos, and
+Flutterwave payments for priced reservations.
 
 Still worth adding before a public launch:
 
 - CAPTCHA or abuse protection beyond rate limiting
-- Payments for reservations (currently a stub — a hold is created and released/confirmed manually,
-  no charge is taken; see `lib/payments.js`)
 - Audit logging UI (the `admin_actions` table is populated, but nothing displays it yet)
 - Error monitoring (Sentry or similar)
 - Custom domain setup

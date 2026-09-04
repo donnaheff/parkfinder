@@ -7,6 +7,7 @@ import { useSession } from '../../components/SessionProvider';
 import { useToast } from '../../components/ToastProvider';
 import { cancelReservation, confirmReservation, getReservations } from '../../lib/api';
 import { holdCountdownText, reservationStatusLabel } from '../../lib/format';
+import { payAndRedirect } from '../../lib/payments';
 
 function CountdownBadge({ expiresAt }) {
   const [now, setNow] = useState(() => Date.now());
@@ -23,6 +24,7 @@ export default function ReservationsPage() {
   const { session, loading: sessionLoading } = useSession();
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(null);
   const showToast = useToast();
 
   async function load() {
@@ -62,12 +64,28 @@ export default function ReservationsPage() {
     }
   }
 
+  async function handlePay(id) {
+    setPaying(id);
+    try {
+      const result = await payAndRedirect(id);
+      if (result.free) {
+        showToast('Reservation confirmed — this lot is free.');
+        load();
+      }
+      // Otherwise the browser is being redirected to Flutterwave's checkout.
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setPaying(null);
+    }
+  }
+
   return (
     <AppShell>
       <section className="panel page-hero">
         <p className="eyebrow">My bookings</p>
         <h1>Reservations</h1>
-        <p className="lead">Holds expire after 10 minutes unless confirmed. Payment isn&rsquo;t wired up yet — confirming a hold doesn&rsquo;t charge you anything.</p>
+        <p className="lead">Holds expire after 10 minutes unless confirmed. Free lots confirm instantly; priced lots require payment within 15 minutes of starting checkout.</p>
       </section>
 
       {!sessionLoading && !session ? (
@@ -94,11 +112,19 @@ export default function ReservationsPage() {
               </div>
               <div className="lot-meta">
                 <span>🕐 {new Date(r.start_time).toLocaleString()} → {new Date(r.end_time).toLocaleString()}</span>
+                {r.status === 'awaiting_payment' && r.amount > 0 && <span>💳 {r.amount} {r.currency}</span>}
               </div>
               {r.status === 'held' && r.hold_expires_at && <CountdownBadge expiresAt={r.hold_expires_at} />}
-              {(r.status === 'held' || r.status === 'confirmed') && (
+              {r.status === 'awaiting_payment' && r.payment_expires_at && <CountdownBadge expiresAt={r.payment_expires_at} />}
+              {(r.status === 'held' || r.status === 'awaiting_payment' || r.status === 'confirmed') && (
                 <div className="actions">
-                  {r.status === 'held' && <button className="btn primary" type="button" onClick={() => handleConfirm(r.id)}>Confirm</button>}
+                  {r.status === 'held' && (r.parking_lots?.price_per_hour > 0 ? (
+                    <button className="btn primary" type="button" onClick={() => handlePay(r.id)} disabled={paying === r.id}>
+                      {paying === r.id ? 'Starting payment…' : 'Pay now'}
+                    </button>
+                  ) : (
+                    <button className="btn primary" type="button" onClick={() => handleConfirm(r.id)}>Confirm</button>
+                  ))}
                   <button className="btn danger" type="button" onClick={() => handleCancel(r.id)}>Cancel</button>
                 </div>
               )}

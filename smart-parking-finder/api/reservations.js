@@ -14,7 +14,7 @@ module.exports = async (req, res) => handle(async () => {
 
   if (req.method === 'GET') {
     const rows = await run(
-      client.from('reservations').select('*, parking_lots(name, area, address)')
+      client.from('reservations').select('*, parking_lots(name, area, address, price_per_hour)')
         .eq('user_id', user.id).order('created_at', { ascending: false })
     );
     return ok(res, rows);

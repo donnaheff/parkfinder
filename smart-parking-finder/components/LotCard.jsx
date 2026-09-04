@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { amenityChips, availabilityClass, availabilityText, occupancyRatio, directionsUrl } from '../lib/format';
+import { amenityChips, availabilityClass, availabilityText, occupancyRatio, directionsUrl, priceText } from '../lib/format';
 import ReserveButton from './ReserveButton';
 
 export default function LotCard({ lot, compact = false, saved = false, onSave, onRoute, liveWalkMinutes }) {
@@ -27,6 +27,7 @@ export default function LotCard({ lot, compact = false, saved = false, onSave, o
           <span>🚶 {lot.walk_meters}m</span>
         )}
         <span>⭐ {lot.rating}</span>
+        <span>💳 {priceText(lot)}</span>
         {chips.map((chip) => (
           <span key={chip.label}>{chip.icon} {chip.label}</span>
         ))}

@@ -67,4 +67,10 @@ describe('lotFromBody', () => {
     const lot = lotFromBody({ name: '  ', area: 'Ikoyi', address: '1 Road' });
     expect(missingLotFields(lot)).toEqual(['name']);
   });
+
+  it('defaults price_per_hour to 0 (free/unset) and clamps negative values', () => {
+    expect(lotFromBody(baseBody).price_per_hour).toBe(0);
+    expect(lotFromBody({ ...baseBody, price_per_hour: -50 }).price_per_hour).toBe(0);
+    expect(lotFromBody({ ...baseBody, price_per_hour: '250' }).price_per_hour).toBe(250);
+  });
 });

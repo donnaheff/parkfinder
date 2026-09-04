@@ -6,6 +6,7 @@ import {
   directionsUrl,
   holdCountdownText,
   occupancyRatio,
+  priceText,
   reservationStatusLabel,
   verificationLabel,
 } from './format';
@@ -70,6 +71,17 @@ describe('amenityChips', () => {
   it('falls back to a bullet icon for unknown amenity keys', () => {
     const chips = amenityChips({ valet: true });
     expect(chips).toEqual([{ icon: '•', label: 'valet' }]);
+  });
+});
+
+describe('priceText', () => {
+  it('reports "Free" for an unset or zero price', () => {
+    expect(priceText({ price_per_hour: 0 })).toBe('Free');
+    expect(priceText({})).toBe('Free');
+  });
+
+  it('formats a positive hourly rate', () => {
+    expect(priceText({ price_per_hour: 250 })).toBe('₦250/hr');
   });
 });
 

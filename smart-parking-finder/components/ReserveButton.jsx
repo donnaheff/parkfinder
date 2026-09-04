@@ -59,7 +59,9 @@ export default function ReserveButton({ lot }) {
             <button className="btn secondary" type="button" onClick={() => setOpen(false)}>Cancel</button>
           </div>
           <p className="muted small" style={{ marginTop: 8, marginBottom: 0 }}>
-            Holds a space for 10 minutes while you confirm — no payment required yet.
+            {lot.price_per_hour > 0
+              ? `Holds a space for 10 minutes — pay ${lot.price_per_hour}/hr from My Reservations to confirm.`
+              : 'Holds a space for 10 minutes while you confirm — this lot is free.'}
           </p>
         </div>
       )}

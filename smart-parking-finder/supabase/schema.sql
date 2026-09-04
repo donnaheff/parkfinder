@@ -50,11 +50,15 @@ create table if not exists public.parking_lots (
   primary_photo_url text not null default '',
   owner_notes text not null default '',
   opening_hours text not null default '06:00–22:00',
+  price_per_hour numeric not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 alter table public.parking_lots add column if not exists city text not null default 'Lagos';
 alter table public.parking_lots add column if not exists country text not null default 'Nigeria';
+-- Phase 8: hourly rate. 0 means free/unset (matches existing seed data, which
+-- predates pricing) — search/UI treat 0 as "no price listed", not "$0".
+alter table public.parking_lots add column if not exists price_per_hour numeric not null default 0;
 
 create table if not exists public.community_reports (
   id uuid primary key default gen_random_uuid(),
@@ -159,10 +163,8 @@ create policy "users can manage their own saved_parks"
 -- For this POC, Vercel serverless functions use the Supabase service role key.
 -- Keep tables private in Supabase; do not expose the service role key to the browser.
 
--- Phase 3: reservations (hold -> confirm -> cancel/complete). No payment
--- processor is wired up yet — 'awaiting_payment' exists in the status enum
--- so a future Paystack integration has somewhere to sit between hold and
--- confirm without a schema change; nothing produces that status today.
+-- Phase 3: reservations (hold -> confirm -> cancel/complete). 'awaiting_payment'
+-- sits between held and confirmed for the Phase 8 Flutterwave integration below.
 create table if not exists public.reservations (
   id uuid primary key default gen_random_uuid(),
   lot_id uuid not null references public.parking_lots(id) on delete cascade,
@@ -178,6 +180,19 @@ create table if not exists public.reservations (
 create index if not exists reservations_user_idx on public.reservations(user_id);
 create index if not exists reservations_lot_idx on public.reservations(lot_id);
 create index if not exists reservations_status_idx on public.reservations(status);
+
+-- Phase 8: payment tracking. amount/currency/payment_reference are set when a
+-- 'held' reservation moves to 'awaiting_payment' (see mark_awaiting_payment
+-- below); payment_expires_at is a separate, shorter-lived timeout from
+-- hold_expires_at so an abandoned Flutterwave checkout doesn't hold a space
+-- indefinitely (see the release_expired_holds extension below).
+alter table public.reservations add column if not exists amount numeric;
+alter table public.reservations add column if not exists currency text not null default 'NGN';
+alter table public.reservations add column if not exists payment_reference text;
+alter table public.reservations add column if not exists payment_status text not null default 'unpaid'
+  check (payment_status in ('unpaid','pending','paid','refunded','failed'));
+alter table public.reservations add column if not exists payment_expires_at timestamptz;
+create index if not exists reservations_payment_reference_idx on public.reservations(payment_reference);
 
 alter table public.reservations enable row level security;
 create policy "users can read their own reservations"
@@ -305,8 +320,9 @@ begin
 end;
 $$;
 
--- Sweeps expired holds back into available_spaces. Called on a schedule by
--- api/cron/release-holds.js (Vercel Cron), not exposed to end users.
+-- Sweeps expired holds AND abandoned payment attempts back into
+-- available_spaces. Called on a schedule by api/cron/release-holds.js
+-- (Vercel Cron), not exposed to end users.
 create or replace function public.release_expired_holds()
 returns integer
 language plpgsql
@@ -326,7 +342,108 @@ begin
     update public.reservations set status = 'cancelled', updated_at = now() where id = v_row.id;
     v_count := v_count + 1;
   end loop;
+
+  for v_row in
+    select id, lot_id from public.reservations
+    where status = 'awaiting_payment' and payment_expires_at < now()
+    for update skip locked
+  loop
+    update public.parking_lots set available_spaces = least(capacity, available_spaces + 1), updated_at = now() where id = v_row.lot_id;
+    update public.reservations set status = 'cancelled', payment_status = 'failed', updated_at = now() where id = v_row.id;
+    v_count := v_count + 1;
+  end loop;
+
   return v_count;
+end;
+$$;
+
+-- Phase 8: Flutterwave payments. Moves a held reservation into
+-- 'awaiting_payment' with its own (shorter) expiry, independent of
+-- hold_expires_at, so an abandoned checkout doesn't hold a space forever.
+create or replace function public.mark_awaiting_payment(
+  p_reservation_id uuid,
+  p_user_id uuid,
+  p_amount numeric,
+  p_currency text,
+  p_reference text,
+  p_payment_minutes integer default 15
+) returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_reservation public.reservations;
+begin
+  select * into v_reservation from public.reservations where id = p_reservation_id for update;
+  if not found then
+    raise exception 'Reservation not found' using errcode = 'P0002';
+  end if;
+  if v_reservation.user_id <> p_user_id then
+    raise exception 'Not your reservation' using errcode = 'P0001';
+  end if;
+  if v_reservation.status <> 'held' then
+    raise exception 'Only a held reservation can start payment' using errcode = 'P0001';
+  end if;
+
+  update public.reservations
+    set status = 'awaiting_payment',
+        payment_status = 'pending',
+        amount = p_amount,
+        currency = p_currency,
+        payment_reference = p_reference,
+        payment_expires_at = now() + (p_payment_minutes || ' minutes')::interval,
+        updated_at = now()
+    where id = p_reservation_id
+    returning * into v_reservation;
+
+  return v_reservation;
+end;
+$$;
+
+-- Finalizes a payment attempt. No p_user_id check here by design: this is
+-- called from the Flutterwave webhook handler (api/webhooks/flutterwave.js),
+-- which has already independently re-verified the transaction against
+-- Flutterwave's API before calling this — never trust the webhook payload
+-- alone for a financial decision, but by the time this function runs, that
+-- verification has already happened server-side.
+create or replace function public.finalize_payment(
+  p_reservation_id uuid,
+  p_reference text,
+  p_success boolean
+) returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_reservation public.reservations;
+begin
+  select * into v_reservation from public.reservations where id = p_reservation_id for update;
+  if not found then
+    raise exception 'Reservation not found' using errcode = 'P0002';
+  end if;
+  if v_reservation.status <> 'awaiting_payment' then
+    -- Already finalized (webhook retry) or no longer awaiting payment — no-op.
+    return v_reservation;
+  end if;
+  if v_reservation.payment_reference is distinct from p_reference then
+    raise exception 'Payment reference mismatch' using errcode = 'P0001';
+  end if;
+
+  if p_success then
+    update public.reservations
+      set status = 'confirmed', payment_status = 'paid', hold_expires_at = null, payment_expires_at = null, updated_at = now()
+      where id = p_reservation_id
+      returning * into v_reservation;
+  else
+    update public.reservations
+      set status = 'held', payment_status = 'failed', updated_at = now()
+      where id = p_reservation_id
+      returning * into v_reservation;
+  end if;
+
+  return v_reservation;
 end;
 $$;
 

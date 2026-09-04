@@ -134,6 +134,10 @@ export function cancelReservation(id) {
   return request(`/api/reservations/${id}/cancel`, { method: 'PATCH' });
 }
 
+export function payForReservation(id) {
+  return request(`/api/reservations/${id}/pay`, { method: 'POST' });
+}
+
 export function getReviews(parkingLotId) {
   return request(`/api/reviews?parking_lot_id=${encodeURIComponent(parkingLotId)}`);
 }

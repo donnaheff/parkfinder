@@ -14,12 +14,12 @@ import {
   updateOpenStatus,
   uploadPhoto,
 } from '../../lib/api';
-import { verificationLabel } from '../../lib/format';
+import { priceText, verificationLabel } from '../../lib/format';
 import { geocodeAddress, hasMapboxToken } from '../../lib/mapbox';
 
 const EMPTY_LOT_FORM = {
   name: '', area: '', city: 'Lagos', country: 'Nigeria', type: 'Open car park', address: '', opening_hours: '06:00–22:00',
-  capacity: 60, available_spaces: 20, walk_meters: 350, drive_minutes: 8,
+  capacity: 60, available_spaces: 20, walk_meters: 350, drive_minutes: 8, price_per_hour: 0,
   ev_charging: false, ev_connector_type: '', ev_kw: '',
   accessible: true, motorbike: true, covered: false, security: true,
   primary_photo_url: '',
@@ -110,6 +110,7 @@ export default function OwnerPage() {
         available_spaces: Number(lotForm.available_spaces),
         walk_meters: Number(lotForm.walk_meters),
         drive_minutes: Number(lotForm.drive_minutes),
+        price_per_hour: Number(lotForm.price_per_hour),
         primary_photo_url: lotForm.primary_photo_url,
         amenities: {
           ev_charging: lotForm.ev_charging,
@@ -232,6 +233,9 @@ export default function OwnerPage() {
                   <input type="number" min="1" value={lotForm.drive_minutes} onChange={(e) => setLotField('drive_minutes', e.target.value)} />
                 </label>
               </div>
+              <label>Price per hour (₦, 0 = free)
+                <input type="number" min="0" step="1" value={lotForm.price_per_hour} onChange={(e) => setLotField('price_per_hour', e.target.value)} />
+              </label>
               <label><span><input type="checkbox" checked={lotForm.ev_charging} onChange={(e) => setLotField('ev_charging', e.target.checked)} /> EV charging</span></label>
               {lotForm.ev_charging && (
                 <div className="grid two">
@@ -276,13 +280,14 @@ export default function OwnerPage() {
             {lots.length > 0 && (
               <table className="data-table">
                 <thead>
-                  <tr><th>Name</th><th>Spaces</th><th>Status</th><th>Open</th><th>Controls</th></tr>
+                  <tr><th>Name</th><th>Spaces</th><th>Price</th><th>Status</th><th>Open</th><th>Controls</th></tr>
                 </thead>
                 <tbody>
                   {lots.map((lot) => (
                     <tr key={lot.id}>
                       <td>{lot.name}<div className="muted small">{lot.area}</div></td>
                       <td>{lot.available_spaces}/{lot.capacity}</td>
+                      <td>{priceText(lot)}</td>
                       <td>{verificationLabel(lot.verification_status)}</td>
                       <td>{lot.is_open ? 'Open' : 'Closed'}</td>
                       <td>
