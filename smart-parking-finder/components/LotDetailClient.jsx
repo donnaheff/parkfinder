@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import LotCard from './LotCard';
 import { useSession } from './SessionProvider';
 import { useToast } from './ToastProvider';
-import { deleteReview, getReviews, getSavedParks, postReview, saveParkingLot } from '../lib/api';
+import { deleteReview, getReviews, getSavedParks, postReview, reportReview, saveParkingLot } from '../lib/api';
 
 const STAR_VALUES = [1, 2, 3, 4, 5];
 
@@ -16,6 +16,7 @@ export default function LotDetailClient({ lot, initialReviews }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [reportedIds, setReportedIds] = useState(new Set());
 
   useEffect(() => {
     if (!session) return;
@@ -73,6 +74,17 @@ export default function LotDetailClient({ lot, initialReviews }) {
     }
   }
 
+  async function handleReport(reviewId) {
+    if (!session) { showToast('Sign in to report a review.'); return; }
+    try {
+      await reportReview(reviewId);
+      setReportedIds((prev) => new Set(prev).add(reviewId));
+      showToast('Thanks — this review has been flagged for admin review.');
+    } catch (err) {
+      showToast(err.message);
+    }
+  }
+
   return (
     <section className="grid aside">
       <div>
@@ -112,6 +124,17 @@ export default function LotDetailClient({ lot, initialReviews }) {
               <div>
                 <div className="muted small">{new Date(r.created_at).toLocaleDateString()}{r.user_id === user?.id ? ' · you' : ''}</div>
                 {r.comment && <p style={{ margin: '4px 0 0' }}>{r.comment}</p>}
+                {r.user_id !== user?.id && (
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    style={{ marginTop: 6, padding: '4px 10px', fontSize: '.8rem' }}
+                    disabled={reportedIds.has(r.id)}
+                    onClick={() => handleReport(r.id)}
+                  >
+                    {reportedIds.has(r.id) ? 'Reported' : 'Report'}
+                  </button>
+                )}
               </div>
             </div>
           ))}

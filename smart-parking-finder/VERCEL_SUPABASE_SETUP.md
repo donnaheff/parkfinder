@@ -159,6 +159,12 @@ before recreating it with the 3 new guest_* parameters, since Postgres treats a 
 list as a new overload rather than a replacement — without that drop you'd end up with two
 ambiguous versions of the function.
 
+Review moderation needs no extra env vars — any signed-in user can flag someone else's review
+(`reviews.report_count`, incremented atomically via `report_review`), and an admin sees everything
+with at least one report on `/admin` under "Flagged reviews," with a delete action. This is a simple
+counter, not fraud-hardened (no per-user once-only enforcement) — admins triage by report count, not
+by trusting a single report as proof. Re-run `schema.sql` if your project predates Phase 12.
+
 ## 3. Deploy to Vercel
 
 ```bash
@@ -210,6 +216,7 @@ DELETE /api/saved/:id
 GET    /api/reviews
 POST   /api/reviews
 DELETE /api/reviews/:id
+POST   /api/reviews/:id/report
 GET    /api/profile
 PUT    /api/profile
 ```
@@ -244,6 +251,7 @@ PATCH /api/admin/parks/:id/approve
 PATCH /api/admin/parks/:id/reject
 PATCH /api/admin/parks/:id/request-info
 PATCH /api/admin/parks/:id
+GET   /api/admin/reviews
 ```
 
 ### Utility

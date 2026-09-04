@@ -161,6 +161,14 @@ export function deleteReview(id) {
   return request(`/api/reviews/${id}`, { method: 'DELETE' });
 }
 
+export function reportReview(id) {
+  return request(`/api/reviews/${id}/report`, { method: 'POST' });
+}
+
+export function getFlaggedReviews() {
+  return request('/api/admin/reviews');
+}
+
 export function uploadPhoto({ data, mime, url }) {
   return request('/api/uploads/photo', {
     method: 'POST',

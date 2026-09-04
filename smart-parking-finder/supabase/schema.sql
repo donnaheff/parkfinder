@@ -511,10 +511,12 @@ create table if not exists public.reviews (
   rating numeric not null check (rating >= 1 and rating <= 5),
   comment text not null default '',
   photo_urls text[] not null default '{}',
+  report_count integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (lot_id, user_id)
 );
+alter table public.reviews add column if not exists report_count integer not null default 0;
 create index if not exists reviews_lot_idx on public.reviews(lot_id);
 
 alter table public.reviews enable row level security;
@@ -546,6 +548,29 @@ drop trigger if exists reviews_recompute_rating on public.reviews;
 create trigger reviews_recompute_rating
   after insert or update or delete on public.reviews
   for each row execute function public.recompute_lot_rating();
+
+-- Phase 12: lightweight review moderation. Any signed-in user can flag a
+-- review; there's no per-user once-only enforcement here (a simple counter,
+-- not fraud-hardened) — admins triage by report_count, not by trusting a
+-- single report as proof.
+create or replace function public.report_review(p_review_id uuid)
+returns public.reviews
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_review public.reviews;
+begin
+  update public.reviews set report_count = report_count + 1, updated_at = now()
+    where id = p_review_id
+    returning * into v_review;
+  if not found then
+    raise exception 'Review not found' using errcode = 'P0002';
+  end if;
+  return v_review;
+end;
+$$;
 
 -- Phase 5: real photo storage instead of the data: URI placeholder in
 -- api/uploads/photo.js. Public bucket (lot photos are meant to be visible
