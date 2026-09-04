@@ -59,6 +59,7 @@ test.describe('map', () => {
 test.describe('auth gates', () => {
   for (const [path, heading] of [
     ['/owner', 'Sign in to continue'],
+    ['/owner/analytics', 'Sign in to continue'],
     ['/admin', 'Sign in to continue'],
     ['/reservations', 'Sign in to continue'],
   ]) {

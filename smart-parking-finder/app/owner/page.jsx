@@ -167,7 +167,12 @@ export default function OwnerPage() {
         <p className="eyebrow">Parking owner console</p>
         <h1>List and manage your car parks.</h1>
         <p className="lead">Register once, then submit lots for admin verification and keep live availability up to date — all backed by the real API.</p>
-        {owner && <div className="actions"><span className="pill">Signed in as {owner.name}</span></div>}
+        {owner && (
+          <div className="actions">
+            <span className="pill">Signed in as {owner.name}</span>
+            <Link className="btn secondary" href="/owner/analytics">View analytics</Link>
+          </div>
+        )}
       </section>
 
       {sessionLoading || ownerLoading ? (

@@ -89,6 +89,10 @@ export function createOwnerPark(body) {
   return request('/api/owner/parks', { method: 'POST', body: JSON.stringify(body) });
 }
 
+export function getOwnerAnalytics() {
+  return request('/api/owner/analytics');
+}
+
 export function updateAvailability(id, availableSpaces) {
   return request(`/api/owner/parks/${id}/availability`, {
     method: 'PATCH',

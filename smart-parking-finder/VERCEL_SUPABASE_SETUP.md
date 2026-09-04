@@ -159,6 +159,11 @@ before recreating it with the 3 new guest_* parameters, since Postgres treats a 
 list as a new overload rather than a replacement — without that drop you'd end up with two
 ambiguous versions of the function.
 
+The owner analytics dashboard (`/owner/analytics`) needs no extra env vars — it aggregates each
+owner's own `reservations`/`parking_lots` rows over the last 30 days (reservation count, revenue
+from `payment_status='paid'` rows, per-lot occupancy). Revenue is only meaningful for lots with a
+`price_per_hour` set (Phase 8); free lots correctly show ₦0 since no payment ever happens for them.
+
 Review moderation needs no extra env vars — any signed-in user can flag someone else's review
 (`reviews.report_count`, incremented atomically via `report_review`), and an admin sees everything
 with at least one report on `/admin` under "Flagged reviews," with a delete action. This is a simple
@@ -241,6 +246,7 @@ GET   /api/owner/parks
 POST  /api/owner/parks
 PATCH /api/owner/parks/:id/availability
 PATCH /api/owner/parks/:id/open-status
+GET   /api/owner/analytics
 ```
 
 ### Admin
