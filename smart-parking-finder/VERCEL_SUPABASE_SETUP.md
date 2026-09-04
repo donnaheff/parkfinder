@@ -125,6 +125,22 @@ no payment step involved. `NEXT_PUBLIC_PAYMENTS_ENABLED` is baked in at build ti
 client-rendered app) and only controls whether the UI shows payment-related copy — redeploy after
 changing it.
 
+For SMS alerts (reservation hold/expiry reminders, admin approve/reject/request-info updates to
+owners) alongside the existing email notifications, add a free-trial [Twilio](https://twilio.com)
+account, buy or verify a sending number, then set:
+
+```text
+TWILIO_ACCOUNT_SID=YOUR_TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN=YOUR_TWILIO_AUTH_TOKEN
+TWILIO_FROM_NUMBER=+1XXXXXXXXXX
+```
+
+Without all three set, the API still works — SMS just doesn't send (logged, not thrown). Renters add
+their number from the "SMS alerts" card on `/reservations` (stored in the new `profiles` table, own
+row only via RLS); owners already have a phone number from registration, so owner decision SMS needs
+no extra step. Re-run `schema.sql` (idempotent) if your project predates Phase 9 to pick up the
+`profiles` table.
+
 Reviews and real photo uploads need no extra env vars — `supabase/schema.sql` already creates the
 `reviews` table (one review per user per lot, enforced by a unique constraint; `parking_lots.rating`
 is kept in sync by a trigger that recomputes the average on every insert/update/delete) and the
@@ -183,6 +199,8 @@ DELETE /api/saved/:id
 GET    /api/reviews
 POST   /api/reviews
 DELETE /api/reviews/:id
+GET    /api/profile
+PUT    /api/profile
 ```
 
 ### Reservations

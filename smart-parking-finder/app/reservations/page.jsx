@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import AppShell from '../../components/AppShell';
 import { useSession } from '../../components/SessionProvider';
 import { useToast } from '../../components/ToastProvider';
-import { cancelReservation, confirmReservation, getReservations } from '../../lib/api';
+import { cancelReservation, confirmReservation, getMyProfile, getReservations, updateMyPhone } from '../../lib/api';
 import { holdCountdownText, reservationStatusLabel } from '../../lib/format';
 import { payAndRedirect } from '../../lib/payments';
 
@@ -25,6 +25,9 @@ export default function ReservationsPage() {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(null);
+  const [phone, setPhone] = useState('');
+  const [phoneSaved, setPhoneSaved] = useState(false);
+  const [savingPhone, setSavingPhone] = useState(false);
   const showToast = useToast();
 
   async function load() {
@@ -40,9 +43,28 @@ export default function ReservationsPage() {
 
   useEffect(() => {
     if (sessionLoading) return;
-    if (session) load(); else setLoading(false);
+    if (session) {
+      load();
+      getMyProfile().then((p) => { if (p?.phone) { setPhone(p.phone); setPhoneSaved(true); } }).catch(() => {});
+    } else {
+      setLoading(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, sessionLoading]);
+
+  async function handleSavePhone(e) {
+    e.preventDefault();
+    setSavingPhone(true);
+    try {
+      await updateMyPhone(phone);
+      setPhoneSaved(true);
+      showToast('Phone saved — you’ll get SMS alerts for holds and expiry.');
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setSavingPhone(false);
+    }
+  }
 
   async function handleConfirm(id) {
     try {
@@ -94,6 +116,23 @@ export default function ReservationsPage() {
           <div className="actions"><Link className="btn primary" href="/login">Sign in</Link></div>
         </section>
       ) : (
+        <>
+        <section className="panel card">
+          <div className="card-header">
+            <div>
+              <h2>SMS alerts</h2>
+              <p className="muted">Get a text when a hold is created or about to expire.</p>
+            </div>
+          </div>
+          <form className="form-stack" onSubmit={handleSavePhone} style={{ gridTemplateColumns: '1fr auto', alignItems: 'end' }}>
+            <label>Phone number
+              <input type="tel" placeholder="+234…" value={phone} onChange={(e) => { setPhone(e.target.value); setPhoneSaved(false); }} />
+            </label>
+            <button className="btn primary" type="submit" disabled={savingPhone || !phone}>
+              {savingPhone ? 'Saving…' : phoneSaved ? 'Saved ✓' : 'Save'}
+            </button>
+          </form>
+        </section>
         <section className="panel card">
           <div className="card-header">
             <div>
@@ -132,6 +171,7 @@ export default function ReservationsPage() {
           ))}
           {!loading && reservations.length === 0 && <p className="muted">No reservations yet — reserve a space from Parking lots or the map.</p>}
         </section>
+        </>
       )}
     </AppShell>
   );

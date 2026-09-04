@@ -66,6 +66,14 @@ export function getMyOwnerProfile() {
   return request('/api/owner/me');
 }
 
+export function getMyProfile() {
+  return request('/api/profile');
+}
+
+export function updateMyPhone(phone) {
+  return request('/api/profile', { method: 'PUT', body: JSON.stringify({ phone }) });
+}
+
 export function registerOwner({ name, phone, business_name }) {
   return request('/api/owner/register', {
     method: 'POST',

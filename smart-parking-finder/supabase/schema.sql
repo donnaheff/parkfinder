@@ -86,6 +86,23 @@ create table if not exists public.saved_parks (
 --   alter table public.saved_parks add constraint saved_parks_user_id_fkey
 --     foreign key (user_id) references auth.users(id) on delete cascade;
 
+-- Phase 9: one row per end user (renter), for data Supabase Auth itself
+-- doesn't store — currently just a phone number for SMS alerts. Same shape
+-- as `owners`: a table keyed on auth.users with "own row" RLS, rather than
+-- Auth user_metadata, for consistency with the rest of this schema.
+create table if not exists public.profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  phone text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.profiles enable row level security;
+create policy "users can manage their own profile"
+  on public.profiles for all
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
 create table if not exists public.admin_actions (
   id uuid primary key default gen_random_uuid(),
   admin_id text,

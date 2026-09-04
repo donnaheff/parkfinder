@@ -3,6 +3,7 @@ const { getClient, run, one, handle } = require('./_lib/supabase');
 const { requireUser } = require('./_lib/auth');
 const { rateLimit } = require('./_lib/ratelimit');
 const { sendReservationHoldEmail } = require('./_lib/email');
+const { sendReservationHoldSms } = require('./_lib/sms');
 
 const HOLD_MINUTES = 10;
 
@@ -39,13 +40,21 @@ module.exports = async (req, res) => handle(async () => {
     })
   );
 
+  const lot = await one('parking_lots', reservation.lot_id);
   if (user.email) {
-    const lot = await one('parking_lots', reservation.lot_id);
     await sendReservationHoldEmail({
       to: user.email,
       lotName: lot?.name || 'your parking lot',
       startTime: reservation.start_time,
       endTime: reservation.end_time,
+      holdExpiresAt: reservation.hold_expires_at,
+    });
+  }
+  const profileRows = await run(client.from('profiles').select('phone').eq('user_id', user.id).limit(1));
+  if (profileRows[0]?.phone) {
+    await sendReservationHoldSms({
+      to: profileRows[0].phone,
+      lotName: lot?.name || 'your parking lot',
       holdExpiresAt: reservation.hold_expires_at,
     });
   }
