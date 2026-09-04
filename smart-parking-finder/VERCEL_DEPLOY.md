@@ -1,22 +1,33 @@
 # Deploy ParkSwift to Vercel
 
-This project is a Next.js app (App Router, fully client-rendered — `output: 'export'`) plus a set of
-standalone Vercel serverless functions in `api/*` backed by Supabase. Marketing/pitch pages remain
-static HTML served from `public/`.
+This project is a Next.js app (App Router) plus a set of standalone Vercel serverless functions in
+`api/*` backed by Supabase. Marketing/pitch pages remain static HTML served from `public/`.
+
+Since Phase 10, five public pages are server-rendered for SEO: `/`, `/lots`, `/areas`, `/updates`,
+and `/lot/[id]` (the lot detail page — now a real dynamic route instead of a `?id=` query string).
+Everything else (`/owner`, `/admin`, `/reservations`, `/login`, `/map`, `/operator`) stays a pure
+client component, unchanged — they're auth-gated or need live browser APIs (geolocation, Mapbox),
+so server rendering doesn't help them. This was a deliberate, scoped exception for those 5 routes,
+not a reversal of the client-rendered architecture: `next.config.js` no longer sets
+`output: 'export'`, since there's no partial-export mode, but the app is still mostly client
+components fetching from the same `api/*` endpoints.
 
 ## What will deploy
 
-Core app routes (Next.js, client-rendered):
+Core app routes:
 
 ```text
-/          Home — live search
-/map       Live parking map
-/lots      Full lot list with filters
-/areas     Neighborhood rollup
-/updates   Community status reports
-/owner     Owner registration + lot management
-/operator  Operator occupancy console
-/admin     Admin verification queue
+/             Home — live search (server-rendered)
+/lots         Full lot list with filters (server-rendered)
+/areas        Neighborhood rollup (server-rendered)
+/updates      Community status reports (server-rendered)
+/lot/:id      Lot detail (server-rendered, per-lot metadata for SEO)
+/map          Live parking map (client-rendered)
+/reservations Reservations + payment (client-rendered)
+/owner        Owner registration + lot management (client-rendered)
+/operator     Operator occupancy console (client-rendered)
+/admin        Admin verification queue (client-rendered)
+/login        Sign in / sign up (client-rendered)
 ```
 
 Marketing/static routes (served from `public/`, unchanged):
@@ -33,6 +44,7 @@ Legacy URLs redirect to their Next.js equivalents:
 /poc          -> /
 /app          -> /
 /backend-demo -> /admin
+/lot?id=:id   -> /lot/:id   (old flat query-string route, pre-Phase-10)
 ```
 
 ## Backend note

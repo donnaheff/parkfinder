@@ -8,7 +8,7 @@
     "build": "next build",
     "lint": "eslint .",
     "test": "vitest run",
-    "start": "npx --yes serve@latest out -l 3000",
+    "start": "next start",
     "legacy-backend": "node backend/server.js"
   },
   "keywords": [

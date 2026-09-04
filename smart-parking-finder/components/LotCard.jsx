@@ -13,7 +13,7 @@ export default function LotCard({ lot, compact = false, saved = false, onSave, o
     <article className="card lot-card">
       <div className="card-header">
         <div>
-          <h3><Link href={`/lot?id=${lot.id}`}>{lot.name}</Link></h3>
+          <h3><Link href={`/lot/${lot.id}`}>{lot.name}</Link></h3>
           <div className="muted">{lot.area}{lot.city ? `, ${lot.city}` : ''}</div>
         </div>
         <span className={`badge ${cls}`}>{availabilityText(lot)}</span>

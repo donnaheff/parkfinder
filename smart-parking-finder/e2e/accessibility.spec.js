@@ -26,7 +26,7 @@ test('lots page (with search results) has no violations', async ({ page }) => {
 test('lot detail page has no violations', async ({ page }) => {
   await page.goto('/lots');
   await page.locator('.lot-card h3 a').first().click();
-  await expect(page).toHaveURL(/\/lot\?id=/);
+  await expect(page).toHaveURL(/\/lot\/[^/]+$/);
   await expectNoViolations(page);
 });
 

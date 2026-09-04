@@ -40,7 +40,7 @@ test.describe('lot detail', () => {
     const lotName = await firstCardTitle.textContent();
     await firstCardTitle.click();
 
-    await expect(page).toHaveURL(/\/lot\?id=/);
+    await expect(page).toHaveURL(/\/lot\/[^/]+$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(lotName.trim());
     // The demo backend has no /api/reviews route, so the page must still
     // render the lot instead of failing the whole page load.

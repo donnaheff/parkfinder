@@ -5,8 +5,9 @@ The project now includes Vercel serverless API routes in `api/`.
 ## Architecture
 
 ```text
-Next.js app (client-rendered, output: 'export')
-  ├─ / /map /lots /areas /updates /owner /operator /admin
+Next.js app
+  ├─ / /lots /areas /updates /lot/[id]        — server-rendered (SEO)
+  ├─ /map /reservations /owner /operator /admin /login — client-rendered
   └─ public/*.html — marketing/pitch pages, unchanged
 
 Vercel serverless API
@@ -14,7 +15,7 @@ Vercel serverless API
 
 Supabase
   ├─ PostgreSQL tables
-  └─ optional Storage later
+  └─ Storage (lot photos)
 ```
 
 ## 1. Create Supabase project
@@ -55,8 +56,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 
 `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` are what the browser uses for sign-in —
 they're meant to be public (RLS is what actually protects data, see `supabase/schema.sql`). Note
-`NEXT_PUBLIC_*` vars are baked in at **build time** since this is a static export: redeploy after
-changing them.
+`NEXT_PUBLIC_*` vars are always inlined into the JS bundle at **build time** in Next.js: redeploy
+after changing them.
 
 Important: use the **service role key only in the non-public server env vars above**. Never put it
 in a `NEXT_PUBLIC_*` variable or browser JavaScript.
