@@ -73,4 +73,14 @@ describe('lotFromBody', () => {
     expect(lotFromBody({ ...baseBody, price_per_hour: -50 }).price_per_hour).toBe(0);
     expect(lotFromBody({ ...baseBody, price_per_hour: '250' }).price_per_hour).toBe(250);
   });
+
+  it('defaults height_clearance_m to null (unknown) rather than assuming a height fits', () => {
+    expect(lotFromBody(baseBody).height_clearance_m).toBeNull();
+    expect(lotFromBody({ ...baseBody, height_clearance_m: '2.1' }).height_clearance_m).toBe(2.1);
+  });
+
+  it('defaults is_24_7 to false', () => {
+    expect(lotFromBody(baseBody).is_24_7).toBe(false);
+    expect(lotFromBody({ ...baseBody, is_24_7: true }).is_24_7).toBe(true);
+  });
 });

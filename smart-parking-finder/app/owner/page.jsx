@@ -20,6 +20,7 @@ import { geocodeAddress, hasMapboxToken } from '../../lib/mapbox';
 const EMPTY_LOT_FORM = {
   name: '', area: '', city: 'Lagos', country: 'Nigeria', type: 'Open car park', address: '', opening_hours: '06:00–22:00',
   capacity: 60, available_spaces: 20, walk_meters: 350, drive_minutes: 8, price_per_hour: 0,
+  height_clearance_m: '', is_24_7: false,
   ev_charging: false, ev_connector_type: '', ev_kw: '',
   accessible: true, motorbike: true, covered: false, security: true,
   primary_photo_url: '',
@@ -111,6 +112,8 @@ export default function OwnerPage() {
         walk_meters: Number(lotForm.walk_meters),
         drive_minutes: Number(lotForm.drive_minutes),
         price_per_hour: Number(lotForm.price_per_hour),
+        height_clearance_m: lotForm.height_clearance_m || undefined,
+        is_24_7: lotForm.is_24_7,
         primary_photo_url: lotForm.primary_photo_url,
         amenities: {
           ev_charging: lotForm.ev_charging,
@@ -241,6 +244,10 @@ export default function OwnerPage() {
               <label>Price per hour (₦, 0 = free)
                 <input type="number" min="0" step="1" value={lotForm.price_per_hour} onChange={(e) => setLotField('price_per_hour', e.target.value)} />
               </label>
+              <label>Height clearance (m, leave blank if unknown)
+                <input type="number" min="0" step="0.1" value={lotForm.height_clearance_m} onChange={(e) => setLotField('height_clearance_m', e.target.value)} />
+              </label>
+              <label><span><input type="checkbox" checked={lotForm.is_24_7} onChange={(e) => setLotField('is_24_7', e.target.checked)} /> Open 24/7</span></label>
               <label><span><input type="checkbox" checked={lotForm.ev_charging} onChange={(e) => setLotField('ev_charging', e.target.checked)} /> EV charging</span></label>
               {lotForm.ev_charging && (
                 <div className="grid two">

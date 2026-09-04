@@ -164,6 +164,12 @@ owner's own `reservations`/`parking_lots` rows over the last 30 days (reservatio
 from `payment_status='paid'` rows, per-lot occupancy). Revenue is only meaningful for lots with a
 `price_per_hour` set (Phase 8); free lots correctly show ₦0 since no payment ever happens for them.
 
+Richer search filters need no extra env vars either — `parking_lots.height_clearance_m` (null =
+unknown; a lot with no recorded clearance is excluded from a height search rather than assumed to
+fit) and `is_24_7` (a structured flag, since `opening_hours` is free text and can't be queried) round
+out `/api/parks`' existing `price_max`/`amenity`/`available` filters. Re-run `schema.sql` if your
+project predates Phase 14.
+
 Review moderation needs no extra env vars — any signed-in user can flag someone else's review
 (`reviews.report_count`, incremented atomically via `report_review`), and an admin sees everything
 with at least one report on `/admin` under "Flagged reviews," with a delete action. This is a simple

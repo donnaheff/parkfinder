@@ -13,6 +13,9 @@ export default function LotsClient({ initialLots, initialQuery }) {
   const [destination, setDestination] = useState(initialQuery);
   const [amenity, setAmenity] = useState('');
   const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [priceMax, setPriceMax] = useState('');
+  const [heightMin, setHeightMin] = useState('');
+  const [is24_7, setIs24_7] = useState(false);
   const [lots, setLots] = useState(initialLots);
   const [savedIds, setSavedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
@@ -29,6 +32,9 @@ export default function LotsClient({ initialLots, initialQuery }) {
         q: overrides.q ?? destination,
         amenity: overrides.amenity ?? amenity,
         available: (overrides.onlyAvailable ?? onlyAvailable) ? 'true' : undefined,
+        price_max: priceMax || undefined,
+        height_min: heightMin || undefined,
+        is_24_7: is24_7 ? 'true' : undefined,
       });
       setLots(rows);
     } catch (err) {
@@ -110,6 +116,19 @@ export default function LotsClient({ initialLots, initialQuery }) {
             </select>
           </label>
           <button className="btn primary" type="submit">Apply filters</button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, gridColumn: '1 / -1' }}>
+            <label className="field" style={{ flex: '0 1 150px' }}>
+              <span>💳</span>
+              <input type="number" min="0" placeholder="Max ₦/hr" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
+            </label>
+            <label className="field" style={{ flex: '0 1 170px' }}>
+              <span>📏</span>
+              <input type="number" min="0" step="0.1" placeholder="Min height, m" value={heightMin} onChange={(e) => setHeightMin(e.target.value)} />
+            </label>
+            <label className="field" style={{ flex: '0 1 130px' }}>
+              <span><input type="checkbox" checked={is24_7} onChange={(e) => setIs24_7(e.target.checked)} /> 24/7 only</span>
+            </label>
+          </div>
         </form>
         <div className="actions">
           <Link className="btn secondary" href="/map">View map</Link>

@@ -51,6 +51,8 @@ create table if not exists public.parking_lots (
   owner_notes text not null default '',
   opening_hours text not null default '06:00–22:00',
   price_per_hour numeric not null default 0,
+  height_clearance_m numeric,
+  is_24_7 boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -59,6 +61,11 @@ alter table public.parking_lots add column if not exists country text not null d
 -- Phase 8: hourly rate. 0 means free/unset (matches existing seed data, which
 -- predates pricing) — search/UI treat 0 as "no price listed", not "$0".
 alter table public.parking_lots add column if not exists price_per_hour numeric not null default 0;
+-- Phase 14: structured filters that opening_hours (free text) can't support
+-- on its own — height_clearance_m is null when unset/unknown (no default
+-- height assumption), is_24_7 defaults false to match existing listings.
+alter table public.parking_lots add column if not exists height_clearance_m numeric;
+alter table public.parking_lots add column if not exists is_24_7 boolean not null default false;
 
 create table if not exists public.community_reports (
   id uuid primary key default gen_random_uuid(),
