@@ -6,6 +6,7 @@ import AppShell from '../../components/AppShell';
 import { useSession } from '../../components/SessionProvider';
 import { useToast } from '../../components/ToastProvider';
 import { signInWithMagicLink, signInWithPassword, signUpWithPassword } from '../../lib/supabaseClient';
+import { stashReferralCode } from '../../components/ReferralCapture';
 
 export default function LoginPage() {
   const { session, loading } = useSession();
@@ -20,6 +21,11 @@ export default function LoginPage() {
   useEffect(() => {
     if (!loading && session) router.replace('/owner');
   }, [loading, session, router]);
+
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get('ref');
+    if (ref) { stashReferralCode(ref); setMode('sign-up'); }
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();

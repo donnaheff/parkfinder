@@ -28,6 +28,17 @@ module.exports = async (req, res) => handle(async () => {
     return ok(res, { reservation: confirmed, free: true });
   }
 
+  // Phase 16: referral credit only ever pays for a reservation in full
+  // (skipping Flutterwave entirely, same as the free-lot path above) —
+  // never as a partial discount on a card charge. redeem_credit is
+  // all-or-nothing under a row lock, so there's no way to spend credit
+  // and then have the "confirm for free" step fail.
+  const redeemed = await run(getClient().rpc('redeem_credit', { p_user_id: user.id, p_amount: amount }));
+  if (redeemed >= amount) {
+    const confirmed = await run(getClient().rpc('confirm_reservation', { p_reservation_id: reservation.id, p_user_id: user.id }));
+    return ok(res, { reservation: confirmed, free: true, creditApplied: redeemed });
+  }
+
   if (!isPaymentsEnabled()) return fail(res, 503, 'Payments are not configured yet.');
 
   const reference = genId('flw');

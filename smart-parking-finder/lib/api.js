@@ -74,6 +74,10 @@ export function updateMyPhone(phone) {
   return request('/api/profile', { method: 'PUT', body: JSON.stringify({ phone }) });
 }
 
+export function applyReferralCode(referral_code) {
+  return request('/api/referrals', { method: 'POST', body: JSON.stringify({ referral_code }) });
+}
+
 export function registerOwner({ name, phone, business_name }) {
   return request('/api/owner/register', {
     method: 'POST',

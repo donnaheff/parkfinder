@@ -91,7 +91,7 @@ export default function ReservationsPage() {
     try {
       const result = await payAndRedirect(id);
       if (result.free) {
-        showToast('Reservation confirmed — this lot is free.');
+        showToast(result.creditApplied ? `Reservation confirmed — ₦${result.creditApplied} credit applied.` : 'Reservation confirmed — this lot is free.');
         load();
       }
       // Otherwise the browser is being redirected to Flutterwave's checkout.

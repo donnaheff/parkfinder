@@ -41,5 +41,18 @@ module.exports = async (req, res) => handle(async () => {
     );
   }
 
+  // Phase 16: credit the referrer on the referee's first paid reservation.
+  // referrals.status flips 'pending' -> 'credited' exactly once (the
+  // unique constraint on referee_user_id means there's at most one row per
+  // referee ever), so this only fires the first time, not on every payment.
+  if (success && reservation.user_id) {
+    const client = getClient();
+    const referral = await one('referrals', reservation.user_id, 'referee_user_id');
+    if (referral && referral.status === 'pending') {
+      await run(client.rpc('credit_referrer', { p_referrer_user_id: referral.referrer_user_id }));
+      await run(client.from('referrals').update({ status: 'credited' }).eq('id', referral.id));
+    }
+  }
+
   ok(res, updated);
 }, res);

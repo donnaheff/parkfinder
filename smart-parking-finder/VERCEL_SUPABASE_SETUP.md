@@ -188,6 +188,23 @@ to). Re-run `schema.sql` if your project predates Phase 15 — it also drops and
 `create_reservation_hold` again for the new `p_vehicle_id` parameter, for the same overload-ambiguity
 reason described above.
 
+The referral program (`/account`, "Refer a friend") needs no extra env vars — a referral code is
+generated lazily the first time a signed-in user's profile is fetched (`profiles.referral_code`,
+unique, retried on the rare collision). Sharing `/login?ref=CODE` records a pending `referrals` row
+for the new signee (`api/referrals.js`); the referrer gets ₦500 credit (`profiles.credit_balance`)
+the moment the referee completes their **first paid reservation** — a `referrals.status` flip from
+`pending` to `credited` that can only happen once per referee (a unique constraint on
+`referee_user_id`), so this is a one-time reward, not per-reservation. Credit is redeemed atomically
+and all-or-nothing (`redeem_credit`): it only ever pays for a reservation in full, skipping
+Flutterwave entirely, the same way a free lot does — never as a partial discount on a card charge, so
+there's no "payment failed after credit was already spent" case to reconcile. Note:
+`profiles.credit_balance` is real monetary value, so — unlike the broader "manage your own profile"
+RLS policy already in place for `phone`/`referral_code` — this schema explicitly revokes client
+UPDATE on that one column (`revoke update (credit_balance) on public.profiles from authenticated`),
+since RLS alone only restricts which *rows* a role can touch, not which *columns*; only the
+service-role-backed `redeem_credit`/`credit_referrer` functions can change it. Re-run `schema.sql` if
+your project predates Phase 16.
+
 ## 3. Deploy to Vercel
 
 ```bash
@@ -248,6 +265,7 @@ PATCH  /api/vehicles/:id
 DELETE /api/vehicles/:id
 GET    /api/payment-methods
 DELETE /api/payment-methods/:id
+POST   /api/referrals
 ```
 
 ### Reservations

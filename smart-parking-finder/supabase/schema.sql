@@ -110,6 +110,80 @@ create policy "users can manage their own profile"
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+-- Phase 16: referral_code/credit_balance. The "for all own row" policy
+-- above was fine when this table only held a phone number, but
+-- credit_balance is real monetary value — RLS controls which *rows* a
+-- role can touch, not which *columns*, so without this, a user could call
+-- PostgREST directly with their own JWT (bypassing this app's API
+-- entirely, which always uses the service role) and set their own balance
+-- to anything. Column-level privileges are checked independently of RLS,
+-- so revoking UPDATE on just this column closes that off while leaving
+-- the broad policy in place for phone/referral_code.
+alter table public.profiles add column if not exists referral_code text unique;
+alter table public.profiles add column if not exists credit_balance numeric not null default 0;
+revoke update (credit_balance) on public.profiles from authenticated;
+
+-- Phase 16: one row per successful referral signup. status flips to
+-- 'credited' exactly once (see credit_referrer below), which is what
+-- makes "credit on first paid reservation" a one-time event — not a
+-- separate "is this their first reservation" check.
+create table if not exists public.referrals (
+  id uuid primary key default gen_random_uuid(),
+  referrer_user_id uuid not null references auth.users(id) on delete cascade,
+  referee_user_id uuid not null references auth.users(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'credited')),
+  created_at timestamptz not null default now(),
+  unique (referee_user_id),
+  check (referrer_user_id <> referee_user_id)
+);
+alter table public.referrals enable row level security;
+create policy "users can view referrals they're part of"
+  on public.referrals for select
+  to authenticated
+  using (referrer_user_id = auth.uid() or referee_user_id = auth.uid());
+-- No insert/update policy: referrals are only ever written by the
+-- service-role-backed API (api/referrals.js, api/webhooks/flutterwave.js).
+
+create or replace function public.redeem_credit(p_user_id uuid, p_amount numeric)
+returns numeric
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_balance numeric;
+begin
+  if p_amount <= 0 then
+    return 0;
+  end if;
+  select credit_balance into v_balance from public.profiles where user_id = p_user_id for update;
+  -- All-or-nothing: if the balance can't fully cover p_amount, redeem
+  -- nothing rather than partially — the caller (api/reservations/[id]/pay.js)
+  -- only ever uses credit to pay for a reservation in full (skipping
+  -- Flutterwave entirely), never as a partial discount on a card charge,
+  -- so there's no "payment failed after credit was already spent" case
+  -- to reconcile.
+  if not found or v_balance < p_amount then
+    return 0;
+  end if;
+  update public.profiles set credit_balance = credit_balance - p_amount, updated_at = now() where user_id = p_user_id;
+  return p_amount;
+end;
+$$;
+
+create or replace function public.credit_referrer(p_referrer_user_id uuid, p_amount numeric default 500)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (user_id, credit_balance)
+  values (p_referrer_user_id, p_amount)
+  on conflict (user_id) do update set credit_balance = public.profiles.credit_balance + p_amount, updated_at = now();
+end;
+$$;
+
 -- Phase 15: saved vehicles, for a quicker reserve flow and so a reservation
 -- can (optionally) record which vehicle it was for.
 create table if not exists public.vehicles (

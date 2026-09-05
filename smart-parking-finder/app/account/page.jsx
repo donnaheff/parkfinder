@@ -9,6 +9,7 @@ import {
   createVehicle,
   deletePaymentMethod,
   deleteVehicle,
+  getMyProfile,
   getPaymentMethods,
   getVehicles,
   setDefaultVehicle,
@@ -20,16 +21,27 @@ export default function AccountPage() {
   const { session, loading: sessionLoading } = useSession();
   const [vehicles, setVehicles] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [form, setForm] = useState(EMPTY_VEHICLE);
   const [loading, setLoading] = useState(true);
   const showToast = useToast();
 
   function load() {
     setLoading(true);
-    Promise.all([getVehicles(), getPaymentMethods()])
-      .then(([v, p]) => { setVehicles(v); setPaymentMethods(p); })
+    Promise.all([getVehicles(), getPaymentMethods(), getMyProfile()])
+      .then(([v, p, prof]) => { setVehicles(v); setPaymentMethods(p); setProfile(prof); })
       .catch((err) => showToast(err.message))
       .finally(() => setLoading(false));
+  }
+
+  async function handleCopyReferralLink() {
+    const link = `${window.location.origin}/login?ref=${profile.referral_code}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast('Referral link copied.');
+    } catch {
+      showToast(link);
+    }
   }
 
   useEffect(() => {
@@ -96,6 +108,22 @@ export default function AccountPage() {
           <div className="actions"><Link className="btn primary" href="/login">Sign in</Link></div>
         </section>
       ) : (
+        <>
+        <section className="panel card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <div>
+              <h2>Refer a friend</h2>
+              <p className="muted">Share your link — you get ₦500 credit when they complete their first paid reservation.</p>
+            </div>
+            <span className="pill">₦{profile?.credit_balance ?? 0} credit</span>
+          </div>
+          {profile?.referral_code && (
+            <div className="actions">
+              <span className="badge">{profile.referral_code}</span>
+              <button className="btn primary" type="button" onClick={handleCopyReferralLink}>Copy referral link</button>
+            </div>
+          )}
+        </section>
         <section className="grid aside">
           <aside className="panel card form-stack">
             <h2>Add a vehicle</h2>
@@ -152,6 +180,7 @@ export default function AccountPage() {
             ))}
           </article>
         </section>
+        </>
       )}
     </AppShell>
   );
