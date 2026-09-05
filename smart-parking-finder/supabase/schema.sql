@@ -110,6 +110,50 @@ create policy "users can manage their own profile"
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+-- Phase 15: saved vehicles, for a quicker reserve flow and so a reservation
+-- can (optionally) record which vehicle it was for.
+create table if not exists public.vehicles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  label text not null,
+  license_plate text,
+  vehicle_type text not null default 'car' check (vehicle_type in ('car','motorbike','van','suv')),
+  is_default boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists vehicles_user_idx on public.vehicles(user_id);
+alter table public.vehicles enable row level security;
+create policy "users can manage their own vehicles"
+  on public.vehicles for all
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+-- Phase 15: saved payment methods (card metadata only — never the actual
+-- card number, which stays with Flutterwave). Populated only by the
+-- Flutterwave webhook after a successful charge, when the payer opted in
+-- to "save card" — never inserted/updated by the client directly, so RLS
+-- only grants select+delete, not the full "for all" pattern used above.
+create table if not exists public.payment_methods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  flutterwave_customer_email text,
+  card_last4 text,
+  card_type text,
+  is_default boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists payment_methods_user_idx on public.payment_methods(user_id);
+alter table public.payment_methods enable row level security;
+create policy "users can view their own payment methods"
+  on public.payment_methods for select
+  to authenticated
+  using (user_id = auth.uid());
+create policy "users can delete their own payment methods"
+  on public.payment_methods for delete
+  to authenticated
+  using (user_id = auth.uid());
+
 create table if not exists public.admin_actions (
   id uuid primary key default gen_random_uuid(),
   admin_id text,
@@ -212,6 +256,8 @@ alter table public.reservations alter column user_id drop not null;
 alter table public.reservations add column if not exists guest_name text;
 alter table public.reservations add column if not exists guest_email text;
 alter table public.reservations add column if not exists guest_phone text;
+-- Phase 15: which saved vehicle (if any) this reservation was for.
+alter table public.reservations add column if not exists vehicle_id uuid references public.vehicles(id) on delete set null;
 alter table public.reservations drop constraint if exists reservations_user_id_or_guest_check;
 alter table public.reservations add constraint reservations_user_id_or_guest_check
   check (user_id is not null or guest_email is not null);
@@ -246,12 +292,14 @@ create policy "users can read their own reservations"
 -- space can't both succeed. Runs as the function owner (security definer)
 -- with a fixed search_path so it can't be tricked by a session-local one.
 --
--- Phase 11 added 3 trailing guest_* params. CREATE OR REPLACE only replaces
--- a function with the exact same argument *types* — a changed parameter
--- list creates a second overload instead, which can make PostgREST's
--- named-parameter RPC calls ambiguous. Drop the old 5-arg signature first
--- so re-running this on an existing project ends up with just one version.
+-- Phase 11 added 3 trailing guest_* params, Phase 15 added p_vehicle_id.
+-- CREATE OR REPLACE only replaces a function with the exact same argument
+-- *types* — a changed parameter list creates a second overload instead,
+-- which can make PostgREST's named-parameter RPC calls ambiguous. Drop
+-- every prior signature first so re-running this on an existing project
+-- ends up with just one version.
 drop function if exists public.create_reservation_hold(uuid, uuid, timestamptz, timestamptz, integer);
+drop function if exists public.create_reservation_hold(uuid, uuid, timestamptz, timestamptz, integer, text, text, text);
 create or replace function public.create_reservation_hold(
   p_lot_id uuid,
   p_user_id uuid,
@@ -260,7 +308,8 @@ create or replace function public.create_reservation_hold(
   p_hold_minutes integer default 10,
   p_guest_name text default null,
   p_guest_email text default null,
-  p_guest_phone text default null
+  p_guest_phone text default null,
+  p_vehicle_id uuid default null
 ) returns public.reservations
 language plpgsql
 security definer
@@ -275,6 +324,9 @@ begin
   end if;
   if p_user_id is null and p_guest_email is null then
     raise exception 'A signed-in user or a guest email is required' using errcode = 'P0001';
+  end if;
+  if p_vehicle_id is not null and not exists (select 1 from public.vehicles where id = p_vehicle_id and user_id = p_user_id) then
+    raise exception 'Vehicle not found' using errcode = 'P0002';
   end if;
 
   select * into v_lot from public.parking_lots where id = p_lot_id for update;
@@ -292,8 +344,8 @@ begin
     set available_spaces = available_spaces - 1, updated_at = now()
     where id = p_lot_id;
 
-  insert into public.reservations (lot_id, user_id, guest_name, guest_email, guest_phone, start_time, end_time, status, hold_expires_at)
-  values (p_lot_id, p_user_id, p_guest_name, p_guest_email, p_guest_phone, p_start_time, p_end_time, 'held', now() + (p_hold_minutes || ' minutes')::interval)
+  insert into public.reservations (lot_id, user_id, guest_name, guest_email, guest_phone, vehicle_id, start_time, end_time, status, hold_expires_at)
+  values (p_lot_id, p_user_id, p_guest_name, p_guest_email, p_guest_phone, p_vehicle_id, p_start_time, p_end_time, 'held', now() + (p_hold_minutes || ' minutes')::interval)
   returning * into v_reservation;
 
   return v_reservation;

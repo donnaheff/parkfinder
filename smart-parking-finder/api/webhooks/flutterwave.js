@@ -24,5 +24,22 @@ module.exports = async (req, res) => handle(async () => {
   const updated = await run(
     getClient().rpc('finalize_payment', { p_reservation_id: reservation.id, p_reference: reference, p_success: success })
   );
+
+  // Phase 15: record card metadata for "cards you've used before" (display
+  // only — this is not a reusable charge token, so it doesn't enable
+  // one-click recharging; that would need Flutterwave's separate tokenized-
+  // charge API, a bigger integration this doesn't attempt). Signed-in users
+  // only — a guest reservation has no account to attach it to.
+  if (success && reservation.user_id && verified.card) {
+    await run(
+      getClient().from('payment_methods').insert({
+        user_id: reservation.user_id,
+        flutterwave_customer_email: verified.customer?.email || null,
+        card_last4: verified.card.last_4digits || null,
+        card_type: verified.card.type || null,
+      })
+    );
+  }
+
   ok(res, updated);
 }, res);

@@ -44,7 +44,7 @@ test('login page has no violations in every mode', async ({ page }) => {
   await expectNoViolations(page);
 });
 
-for (const path of ['/owner', '/owner/analytics', '/admin', '/reservations']) {
+for (const path of ['/owner', '/owner/analytics', '/admin', '/reservations', '/account']) {
   test(`${path} sign-in gate has no violations`, async ({ page }) => {
     await page.goto(path);
     await expectNoViolations(page);

@@ -63,6 +63,7 @@ module.exports = async (req, res) => handle(async () => {
       p_guest_name: user ? null : String(body.guest_name || '').trim() || null,
       p_guest_email: user ? null : guestEmail,
       p_guest_phone: user ? null : String(body.guest_phone || '').trim() || null,
+      p_vehicle_id: user ? body.vehicle_id || null : null,
     })
   );
   const lot = await one('parking_lots', reservation.lot_id);

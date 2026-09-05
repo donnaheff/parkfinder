@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: '/areas', label: 'Areas', key: 'areas' },
   { href: '/updates', label: 'Updates', key: 'updates' },
   { href: '/reservations', label: 'Reservations', key: 'reservations' },
+  { href: '/account', label: 'Account', key: 'account' },
   { href: '/owner', label: 'Owner', key: 'owner' },
   { href: '/operator', label: 'Operator', key: 'operator' },
   { href: '/admin', label: 'Admin', key: 'admin' },

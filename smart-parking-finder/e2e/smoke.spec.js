@@ -62,6 +62,7 @@ test.describe('auth gates', () => {
     ['/owner/analytics', 'Sign in to continue'],
     ['/admin', 'Sign in to continue'],
     ['/reservations', 'Sign in to continue'],
+    ['/account', 'Sign in to continue'],
   ]) {
     test(`${path} gates behind sign-in when signed out`, async ({ page }) => {
       await page.goto(path);

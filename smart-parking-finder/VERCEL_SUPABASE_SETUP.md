@@ -176,6 +176,18 @@ with at least one report on `/admin` under "Flagged reviews," with a delete acti
 counter, not fraud-hardened (no per-user once-only enforcement) — admins triage by report count, not
 by trusting a single report as proof. Re-run `schema.sql` if your project predates Phase 12.
 
+Saved vehicles and payment methods (`/account`) need no extra env vars — `vehicles` is a plain
+own-rows table for a quicker reserve flow (an optional vehicle selector appears on `ReserveButton`
+once you have one saved), and reservations gained a nullable `vehicle_id`. `payment_methods` records
+card metadata (last 4 digits, card type) from a verified Flutterwave charge for display only — it is
+**not** a reusable charge token and does not enable one-click recharging (that needs Flutterwave's
+separate tokenized-charge API, a bigger integration this doesn't attempt); rows are only ever
+inserted by `api/webhooks/flutterwave.js` after independently verifying a transaction, never by the
+client directly, and only for signed-in users (a guest reservation has no account to attach a card
+to). Re-run `schema.sql` if your project predates Phase 15 — it also drops and recreates
+`create_reservation_hold` again for the new `p_vehicle_id` parameter, for the same overload-ambiguity
+reason described above.
+
 ## 3. Deploy to Vercel
 
 ```bash
@@ -230,6 +242,12 @@ DELETE /api/reviews/:id
 POST   /api/reviews/:id/report
 GET    /api/profile
 PUT    /api/profile
+GET    /api/vehicles
+POST   /api/vehicles
+PATCH  /api/vehicles/:id
+DELETE /api/vehicles/:id
+GET    /api/payment-methods
+DELETE /api/payment-methods/:id
 ```
 
 ### Reservations

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from './SessionProvider';
 import { useToast } from './ToastProvider';
-import { createReservation } from '../lib/api';
+import { createReservation, getVehicles } from '../lib/api';
 
 const DURATIONS = [1, 2, 3, 4, 8, 24];
 
@@ -25,10 +25,23 @@ export default function ReserveButton({ lot }) {
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
+  const [vehicles, setVehicles] = useState([]);
+  const [vehicleId, setVehicleId] = useState('');
   const [busy, setBusy] = useState(false);
 
   const full = lot.available_spaces === 0 || !lot.is_open;
   const nowLocal = toLocalInputValue(new Date());
+
+  useEffect(() => {
+    if (!session) { setVehicles([]); return; }
+    getVehicles()
+      .then((rows) => {
+        setVehicles(rows);
+        const def = rows.find((v) => v.is_default) || rows[0];
+        if (def) setVehicleId(def.id);
+      })
+      .catch(() => {});
+  }, [session]);
 
   async function handleReserve() {
     if (!session && !guestEmail.trim()) { showToast('Enter an email to reserve without an account.'); return; }
@@ -43,6 +56,7 @@ export default function ReserveButton({ lot }) {
         guest_name: guestName || undefined,
         guest_email: guestEmail || undefined,
         guest_phone: guestPhone || undefined,
+        vehicle_id: vehicleId || undefined,
       });
       setOpen(false);
       if (result.checkoutUrl) {
@@ -86,6 +100,14 @@ export default function ReserveButton({ lot }) {
               <label className="field"><span>👤</span><input placeholder="Name (optional)" value={guestName} onChange={(e) => setGuestName(e.target.value)} /></label>
               <label className="field"><span>📱</span><input type="tel" placeholder="Phone (optional)" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} /></label>
             </>
+          )}
+          {session && vehicles.length > 0 && (
+            <label className="field">
+              <span>🚗</span>
+              <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
+                {vehicles.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+              </select>
+            </label>
           )}
           <div className="actions" style={{ marginTop: 8 }}>
             <button className="btn primary" type="button" onClick={handleReserve} disabled={busy}>
