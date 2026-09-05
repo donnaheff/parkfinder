@@ -66,6 +66,18 @@ export function getMyOwnerProfile() {
   return request('/api/owner/me');
 }
 
+export function getMyProfile() {
+  return request('/api/profile');
+}
+
+export function updateMyPhone(phone) {
+  return request('/api/profile', { method: 'PUT', body: JSON.stringify({ phone }) });
+}
+
+export function applyReferralCode(referral_code) {
+  return request('/api/referrals', { method: 'POST', body: JSON.stringify({ referral_code }) });
+}
+
 export function registerOwner({ name, phone, business_name }) {
   return request('/api/owner/register', {
     method: 'POST',
@@ -79,6 +91,10 @@ export function getOwnerParks() {
 
 export function createOwnerPark(body) {
   return request('/api/owner/parks', { method: 'POST', body: JSON.stringify(body) });
+}
+
+export function getOwnerAnalytics() {
+  return request('/api/owner/analytics');
 }
 
 export function updateAvailability(id, availableSpaces) {
@@ -119,10 +135,10 @@ export function getReservations() {
   return request('/api/reservations');
 }
 
-export function createReservation({ parking_lot_id, start_time, end_time }) {
+export function createReservation({ parking_lot_id, start_time, end_time, guest_name, guest_email, guest_phone, vehicle_id }) {
   return request('/api/reservations', {
     method: 'POST',
-    body: JSON.stringify({ parking_lot_id, start_time, end_time }),
+    body: JSON.stringify({ parking_lot_id, start_time, end_time, guest_name, guest_email, guest_phone, vehicle_id }),
   });
 }
 
@@ -132,6 +148,10 @@ export function confirmReservation(id) {
 
 export function cancelReservation(id) {
   return request(`/api/reservations/${id}/cancel`, { method: 'PATCH' });
+}
+
+export function payForReservation(id) {
+  return request(`/api/reservations/${id}/pay`, { method: 'POST' });
 }
 
 export function getReviews(parkingLotId) {
@@ -147,6 +167,41 @@ export function postReview({ parking_lot_id, rating, comment, photo_urls }) {
 
 export function deleteReview(id) {
   return request(`/api/reviews/${id}`, { method: 'DELETE' });
+}
+
+export function reportReview(id) {
+  return request(`/api/reviews/${id}/report`, { method: 'POST' });
+}
+
+export function getFlaggedReviews() {
+  return request('/api/admin/reviews');
+}
+
+export function getVehicles() {
+  return request('/api/vehicles');
+}
+
+export function createVehicle({ label, license_plate, vehicle_type, is_default }) {
+  return request('/api/vehicles', {
+    method: 'POST',
+    body: JSON.stringify({ label, license_plate, vehicle_type, is_default }),
+  });
+}
+
+export function setDefaultVehicle(id) {
+  return request(`/api/vehicles/${id}`, { method: 'PATCH', body: JSON.stringify({ is_default: true }) });
+}
+
+export function deleteVehicle(id) {
+  return request(`/api/vehicles/${id}`, { method: 'DELETE' });
+}
+
+export function getPaymentMethods() {
+  return request('/api/payment-methods');
+}
+
+export function deletePaymentMethod(id) {
+  return request(`/api/payment-methods/${id}`, { method: 'DELETE' });
 }
 
 export function uploadPhoto({ data, mime, url }) {

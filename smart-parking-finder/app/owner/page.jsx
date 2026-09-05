@@ -14,12 +14,13 @@ import {
   updateOpenStatus,
   uploadPhoto,
 } from '../../lib/api';
-import { verificationLabel } from '../../lib/format';
+import { priceText, verificationLabel } from '../../lib/format';
 import { geocodeAddress, hasMapboxToken } from '../../lib/mapbox';
 
 const EMPTY_LOT_FORM = {
   name: '', area: '', city: 'Lagos', country: 'Nigeria', type: 'Open car park', address: '', opening_hours: '06:00–22:00',
-  capacity: 60, available_spaces: 20, walk_meters: 350, drive_minutes: 8,
+  capacity: 60, available_spaces: 20, walk_meters: 350, drive_minutes: 8, price_per_hour: 0,
+  height_clearance_m: '', is_24_7: false,
   ev_charging: false, ev_connector_type: '', ev_kw: '',
   accessible: true, motorbike: true, covered: false, security: true,
   primary_photo_url: '',
@@ -110,6 +111,9 @@ export default function OwnerPage() {
         available_spaces: Number(lotForm.available_spaces),
         walk_meters: Number(lotForm.walk_meters),
         drive_minutes: Number(lotForm.drive_minutes),
+        price_per_hour: Number(lotForm.price_per_hour),
+        height_clearance_m: lotForm.height_clearance_m || undefined,
+        is_24_7: lotForm.is_24_7,
         primary_photo_url: lotForm.primary_photo_url,
         amenities: {
           ev_charging: lotForm.ev_charging,
@@ -166,7 +170,12 @@ export default function OwnerPage() {
         <p className="eyebrow">Parking owner console</p>
         <h1>List and manage your car parks.</h1>
         <p className="lead">Register once, then submit lots for admin verification and keep live availability up to date — all backed by the real API.</p>
-        {owner && <div className="actions"><span className="pill">Signed in as {owner.name}</span></div>}
+        {owner && (
+          <div className="actions">
+            <span className="pill">Signed in as {owner.name}</span>
+            <Link className="btn secondary" href="/owner/analytics">View analytics</Link>
+          </div>
+        )}
       </section>
 
       {sessionLoading || ownerLoading ? (
@@ -232,6 +241,13 @@ export default function OwnerPage() {
                   <input type="number" min="1" value={lotForm.drive_minutes} onChange={(e) => setLotField('drive_minutes', e.target.value)} />
                 </label>
               </div>
+              <label>Price per hour (₦, 0 = free)
+                <input type="number" min="0" step="1" value={lotForm.price_per_hour} onChange={(e) => setLotField('price_per_hour', e.target.value)} />
+              </label>
+              <label>Height clearance (m, leave blank if unknown)
+                <input type="number" min="0" step="0.1" value={lotForm.height_clearance_m} onChange={(e) => setLotField('height_clearance_m', e.target.value)} />
+              </label>
+              <label><span><input type="checkbox" checked={lotForm.is_24_7} onChange={(e) => setLotField('is_24_7', e.target.checked)} /> Open 24/7</span></label>
               <label><span><input type="checkbox" checked={lotForm.ev_charging} onChange={(e) => setLotField('ev_charging', e.target.checked)} /> EV charging</span></label>
               {lotForm.ev_charging && (
                 <div className="grid two">
@@ -276,13 +292,14 @@ export default function OwnerPage() {
             {lots.length > 0 && (
               <table className="data-table">
                 <thead>
-                  <tr><th>Name</th><th>Spaces</th><th>Status</th><th>Open</th><th>Controls</th></tr>
+                  <tr><th>Name</th><th>Spaces</th><th>Price</th><th>Status</th><th>Open</th><th>Controls</th></tr>
                 </thead>
                 <tbody>
                   {lots.map((lot) => (
                     <tr key={lot.id}>
                       <td>{lot.name}<div className="muted small">{lot.area}</div></td>
                       <td>{lot.available_spaces}/{lot.capacity}</td>
+                      <td>{priceText(lot)}</td>
                       <td>{verificationLabel(lot.verification_status)}</td>
                       <td>{lot.is_open ? 'Open' : 'Closed'}</td>
                       <td>

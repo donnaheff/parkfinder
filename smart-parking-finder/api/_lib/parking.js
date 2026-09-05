@@ -35,7 +35,10 @@ function lotFromBody(body, ownerId) {
     is_open: body.is_open == null ? true : Boolean(body.is_open),
     primary_photo_url: String(body.primary_photo_url || body.photo_url || ''),
     owner_notes: String(body.owner_notes || body.notes || ''),
-    opening_hours: String(body.opening_hours || body.hours || '06:00–22:00')
+    opening_hours: String(body.opening_hours || body.hours || '06:00–22:00'),
+    price_per_hour: Math.max(0, Number(body.price_per_hour || 0)),
+    height_clearance_m: body.height_clearance_m ? Math.max(0, Number(body.height_clearance_m)) : null,
+    is_24_7: Boolean(body.is_24_7)
   };
 }
 function missingLotFields(lot) {

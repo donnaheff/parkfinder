@@ -1,6 +1,7 @@
 import { ToastProvider } from '../components/ToastProvider';
 import { SessionProvider } from '../components/SessionProvider';
 import ServiceWorkerRegister from '../components/ServiceWorkerRegister';
+import ReferralCapture from '../components/ReferralCapture';
 
 export const metadata = {
   title: 'ParkSwift — Smart Parking Finder',
@@ -21,6 +22,7 @@ export default function RootLayout({ children }) {
       <body>
         <ServiceWorkerRegister />
         <SessionProvider>
+          <ReferralCapture />
           <ToastProvider>{children}</ToastProvider>
         </SessionProvider>
       </body>

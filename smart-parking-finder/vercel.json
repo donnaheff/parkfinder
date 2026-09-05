@@ -9,7 +9,13 @@
   "redirects": [
     { "source": "/poc", "destination": "/", "permanent": true },
     { "source": "/app", "destination": "/", "permanent": true },
-    { "source": "/backend-demo", "destination": "/admin", "permanent": true }
+    { "source": "/backend-demo", "destination": "/admin", "permanent": true },
+    {
+      "source": "/lot",
+      "has": [{ "type": "query", "key": "id", "value": "(?<id>.*)" }],
+      "destination": "/lot/:id",
+      "permanent": false
+    }
   ],
   "crons": [
     { "path": "/api/cron/release-holds", "schedule": "*/15 * * * *" }

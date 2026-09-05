@@ -40,7 +40,7 @@ test.describe('lot detail', () => {
     const lotName = await firstCardTitle.textContent();
     await firstCardTitle.click();
 
-    await expect(page).toHaveURL(/\/lot\?id=/);
+    await expect(page).toHaveURL(/\/lot\/[^/]+$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(lotName.trim());
     // The demo backend has no /api/reviews route, so the page must still
     // render the lot instead of failing the whole page load.
@@ -59,8 +59,10 @@ test.describe('map', () => {
 test.describe('auth gates', () => {
   for (const [path, heading] of [
     ['/owner', 'Sign in to continue'],
+    ['/owner/analytics', 'Sign in to continue'],
     ['/admin', 'Sign in to continue'],
     ['/reservations', 'Sign in to continue'],
+    ['/account', 'Sign in to continue'],
   ]) {
     test(`${path} gates behind sign-in when signed out`, async ({ page }) => {
       await page.goto(path);

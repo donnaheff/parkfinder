@@ -1,30 +1,21 @@
-'use client';
-
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import AppShell from '../../components/AppShell';
-import { useToast } from '../../components/ToastProvider';
-import { getAreas } from '../../lib/api';
+import { getAreasServer } from '../../lib/api-server';
 
-export default function AreasPage() {
-  const [areas, setAreas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const showToast = useToast();
+export const metadata = {
+  title: 'Parking by area — ParkSwift',
+  description: 'See how many car parks and available spaces each neighborhood has right now.',
+};
 
-  useEffect(() => {
-    getAreas()
-      .then(setAreas)
-      .catch((err) => showToast(err.message))
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+export default async function AreasPage() {
+  const { areas } = await getAreasServer();
 
   return (
     <AppShell>
       <section className="panel page-hero">
         <p className="eyebrow">Neighborhoods</p>
         <h1>Parking by area</h1>
-        <p className="lead">See how many car parks and available spaces each Lagos neighborhood has right now.</p>
+        <p className="lead">See how many car parks and available spaces each neighborhood has right now.</p>
       </section>
 
       <section className="grid three">
@@ -38,7 +29,7 @@ export default function AreasPage() {
             </div>
           </Link>
         ))}
-        {!loading && areas.length === 0 && <p className="muted">No areas found yet.</p>}
+        {areas.length === 0 && <p className="muted">No areas found yet.</p>}
       </section>
     </AppShell>
   );

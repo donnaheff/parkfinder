@@ -5,12 +5,13 @@ import { useEffect, useState } from 'react';
 import AppShell from '../../components/AppShell';
 import { useSession } from '../../components/SessionProvider';
 import { useToast } from '../../components/ToastProvider';
-import { adminDecision, getAdminSubmissions } from '../../lib/api';
+import { adminDecision, deleteReview, getAdminSubmissions, getFlaggedReviews } from '../../lib/api';
 import { verificationLabel } from '../../lib/format';
 
 export default function AdminPage() {
   const { session, loading: sessionLoading } = useSession();
   const [submissions, setSubmissions] = useState([]);
+  const [flaggedReviews, setFlaggedReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const showToast = useToast();
@@ -20,8 +21,8 @@ export default function AdminPage() {
     if (!session) { setLoading(false); return; }
     setLoading(true);
     setError('');
-    getAdminSubmissions()
-      .then(setSubmissions)
+    Promise.all([getAdminSubmissions(), getFlaggedReviews()])
+      .then(([subs, reviews]) => { setSubmissions(subs); setFlaggedReviews(reviews); })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -32,6 +33,16 @@ export default function AdminPage() {
       await adminDecision(id, action, '');
       showToast(`Listing ${action.replace('-', ' ')}d.`);
       setSubmissions((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      showToast(err.message);
+    }
+  }
+
+  async function handleDeleteReview(id) {
+    try {
+      await deleteReview(id);
+      showToast('Review removed.');
+      setFlaggedReviews((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       showToast(err.message);
     }
@@ -80,6 +91,32 @@ export default function AdminPage() {
             </div>
           ))}
           {!loading && !error && submissions.length === 0 && <p className="muted">Nothing pending review.</p>}
+        </section>
+      )}
+
+      {session && (
+        <section className="panel card" style={{ marginTop: 20 }}>
+          <div className="card-header">
+            <div>
+              <h2>Flagged reviews</h2>
+              <p className="muted">{loading ? 'Loading…' : `${flaggedReviews.length} flagged`}</p>
+            </div>
+          </div>
+          {flaggedReviews.map((r) => (
+            <div key={r.id} className="card" style={{ marginBottom: 12 }}>
+              <div className="card-header">
+                <div>
+                  <h3>{r.parking_lots?.name || 'Parking lot'}</h3>
+                  <div className="muted">{'⭐'.repeat(r.rating)} · {r.report_count} report{r.report_count === 1 ? '' : 's'}</div>
+                </div>
+              </div>
+              {r.comment && <p className="muted">{r.comment}</p>}
+              <div className="actions">
+                <button className="btn danger" type="button" onClick={() => handleDeleteReview(r.id)}>Delete review</button>
+              </div>
+            </div>
+          ))}
+          {!loading && flaggedReviews.length === 0 && <p className="muted">No flagged reviews.</p>}
         </section>
       )}
     </AppShell>

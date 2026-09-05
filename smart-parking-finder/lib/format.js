@@ -46,6 +46,10 @@ export function amenityChips(amenities) {
     });
 }
 
+export function priceText(lot) {
+  return lot?.price_per_hour > 0 ? `₦${lot.price_per_hour}/hr` : 'Free';
+}
+
 export function directionsUrl(lot, provider = 'osm') {
   const q = encodeURIComponent(`${lot.name} ${lot.address} ${lot.area}`);
   if (provider === 'google') return `https://www.google.com/maps/search/?api=1&query=${q}`;

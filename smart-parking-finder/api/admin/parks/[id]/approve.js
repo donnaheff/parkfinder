@@ -2,6 +2,7 @@ const { ok, fail, requireMethod, parseBody } = require('../../../_lib/http');
 const { getClient, run, one, handle } = require('../../../_lib/supabase');
 const { requireAdminUser } = require('../../../_lib/auth');
 const { sendAdminDecisionEmail } = require('../../../_lib/email');
+const { sendAdminDecisionSms } = require('../../../_lib/sms');
 module.exports = async (req, res) => handle(async () => {
   if (!requireMethod(req, res, ['PATCH'])) return;
   const admin = await requireAdminUser(req, res);
@@ -15,5 +16,6 @@ module.exports = async (req, res) => handle(async () => {
   await run(client.from('admin_actions').insert({ admin_id: admin.id, target_type: 'parking_lot', target_id: lot.id, action: 'approve', notes }));
   const owner = lot.owner_id ? await one('owners', lot.owner_id) : null;
   if (owner?.email) await sendAdminDecisionEmail({ to: owner.email, lotName: lot.name, decision: 'approve', notes });
+  if (owner?.phone) await sendAdminDecisionSms({ to: owner.phone, lotName: lot.name, decision: 'approve' });
   ok(res, updated[0]);
 }, res);

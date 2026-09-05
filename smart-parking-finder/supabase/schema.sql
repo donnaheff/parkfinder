@@ -50,11 +50,22 @@ create table if not exists public.parking_lots (
   primary_photo_url text not null default '',
   owner_notes text not null default '',
   opening_hours text not null default '06:00–22:00',
+  price_per_hour numeric not null default 0,
+  height_clearance_m numeric,
+  is_24_7 boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 alter table public.parking_lots add column if not exists city text not null default 'Lagos';
 alter table public.parking_lots add column if not exists country text not null default 'Nigeria';
+-- Phase 8: hourly rate. 0 means free/unset (matches existing seed data, which
+-- predates pricing) — search/UI treat 0 as "no price listed", not "$0".
+alter table public.parking_lots add column if not exists price_per_hour numeric not null default 0;
+-- Phase 14: structured filters that opening_hours (free text) can't support
+-- on its own — height_clearance_m is null when unset/unknown (no default
+-- height assumption), is_24_7 defaults false to match existing listings.
+alter table public.parking_lots add column if not exists height_clearance_m numeric;
+alter table public.parking_lots add column if not exists is_24_7 boolean not null default false;
 
 create table if not exists public.community_reports (
   id uuid primary key default gen_random_uuid(),
@@ -81,6 +92,141 @@ create table if not exists public.saved_parks (
 --   alter table public.saved_parks alter column user_id type uuid using user_id::uuid;
 --   alter table public.saved_parks add constraint saved_parks_user_id_fkey
 --     foreign key (user_id) references auth.users(id) on delete cascade;
+
+-- Phase 9: one row per end user (renter), for data Supabase Auth itself
+-- doesn't store — currently just a phone number for SMS alerts. Same shape
+-- as `owners`: a table keyed on auth.users with "own row" RLS, rather than
+-- Auth user_metadata, for consistency with the rest of this schema.
+create table if not exists public.profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  phone text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.profiles enable row level security;
+create policy "users can manage their own profile"
+  on public.profiles for all
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+-- Phase 16: referral_code/credit_balance. The "for all own row" policy
+-- above was fine when this table only held a phone number, but
+-- credit_balance is real monetary value — RLS controls which *rows* a
+-- role can touch, not which *columns*, so without this, a user could call
+-- PostgREST directly with their own JWT (bypassing this app's API
+-- entirely, which always uses the service role) and set their own balance
+-- to anything. Column-level privileges are checked independently of RLS,
+-- so revoking UPDATE on just this column closes that off while leaving
+-- the broad policy in place for phone/referral_code.
+alter table public.profiles add column if not exists referral_code text unique;
+alter table public.profiles add column if not exists credit_balance numeric not null default 0;
+revoke update (credit_balance) on public.profiles from authenticated;
+
+-- Phase 16: one row per successful referral signup. status flips to
+-- 'credited' exactly once (see credit_referrer below), which is what
+-- makes "credit on first paid reservation" a one-time event — not a
+-- separate "is this their first reservation" check.
+create table if not exists public.referrals (
+  id uuid primary key default gen_random_uuid(),
+  referrer_user_id uuid not null references auth.users(id) on delete cascade,
+  referee_user_id uuid not null references auth.users(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'credited')),
+  created_at timestamptz not null default now(),
+  unique (referee_user_id),
+  check (referrer_user_id <> referee_user_id)
+);
+alter table public.referrals enable row level security;
+create policy "users can view referrals they're part of"
+  on public.referrals for select
+  to authenticated
+  using (referrer_user_id = auth.uid() or referee_user_id = auth.uid());
+-- No insert/update policy: referrals are only ever written by the
+-- service-role-backed API (api/referrals.js, api/webhooks/flutterwave.js).
+
+create or replace function public.redeem_credit(p_user_id uuid, p_amount numeric)
+returns numeric
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_balance numeric;
+begin
+  if p_amount <= 0 then
+    return 0;
+  end if;
+  select credit_balance into v_balance from public.profiles where user_id = p_user_id for update;
+  -- All-or-nothing: if the balance can't fully cover p_amount, redeem
+  -- nothing rather than partially — the caller (api/reservations/[id]/pay.js)
+  -- only ever uses credit to pay for a reservation in full (skipping
+  -- Flutterwave entirely), never as a partial discount on a card charge,
+  -- so there's no "payment failed after credit was already spent" case
+  -- to reconcile.
+  if not found or v_balance < p_amount then
+    return 0;
+  end if;
+  update public.profiles set credit_balance = credit_balance - p_amount, updated_at = now() where user_id = p_user_id;
+  return p_amount;
+end;
+$$;
+
+create or replace function public.credit_referrer(p_referrer_user_id uuid, p_amount numeric default 500)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (user_id, credit_balance)
+  values (p_referrer_user_id, p_amount)
+  on conflict (user_id) do update set credit_balance = public.profiles.credit_balance + p_amount, updated_at = now();
+end;
+$$;
+
+-- Phase 15: saved vehicles, for a quicker reserve flow and so a reservation
+-- can (optionally) record which vehicle it was for.
+create table if not exists public.vehicles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  label text not null,
+  license_plate text,
+  vehicle_type text not null default 'car' check (vehicle_type in ('car','motorbike','van','suv')),
+  is_default boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists vehicles_user_idx on public.vehicles(user_id);
+alter table public.vehicles enable row level security;
+create policy "users can manage their own vehicles"
+  on public.vehicles for all
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+-- Phase 15: saved payment methods (card metadata only — never the actual
+-- card number, which stays with Flutterwave). Populated only by the
+-- Flutterwave webhook after a successful charge, when the payer opted in
+-- to "save card" — never inserted/updated by the client directly, so RLS
+-- only grants select+delete, not the full "for all" pattern used above.
+create table if not exists public.payment_methods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  flutterwave_customer_email text,
+  card_last4 text,
+  card_type text,
+  is_default boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists payment_methods_user_idx on public.payment_methods(user_id);
+alter table public.payment_methods enable row level security;
+create policy "users can view their own payment methods"
+  on public.payment_methods for select
+  to authenticated
+  using (user_id = auth.uid());
+create policy "users can delete their own payment methods"
+  on public.payment_methods for delete
+  to authenticated
+  using (user_id = auth.uid());
 
 create table if not exists public.admin_actions (
   id uuid primary key default gen_random_uuid(),
@@ -159,25 +305,52 @@ create policy "users can manage their own saved_parks"
 -- For this POC, Vercel serverless functions use the Supabase service role key.
 -- Keep tables private in Supabase; do not expose the service role key to the browser.
 
--- Phase 3: reservations (hold -> confirm -> cancel/complete). No payment
--- processor is wired up yet — 'awaiting_payment' exists in the status enum
--- so a future Paystack integration has somewhere to sit between hold and
--- confirm without a schema change; nothing produces that status today.
+-- Phase 3: reservations (hold -> confirm -> cancel/complete). 'awaiting_payment'
+-- sits between held and confirmed for the Phase 8 Flutterwave integration below.
+-- Phase 11: user_id is nullable — a guest checkout (no account) fills in
+-- guest_name/guest_email/guest_phone instead; the check constraint below
+-- requires one or the other.
 create table if not exists public.reservations (
   id uuid primary key default gen_random_uuid(),
   lot_id uuid not null references public.parking_lots(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  guest_name text,
+  guest_email text,
+  guest_phone text,
   start_time timestamptz not null,
   end_time timestamptz not null,
   status text not null default 'held' check (status in ('held','awaiting_payment','confirmed','cancelled','completed')),
   hold_expires_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (end_time > start_time)
+  check (end_time > start_time),
+  check (user_id is not null or guest_email is not null)
 );
+alter table public.reservations alter column user_id drop not null;
+alter table public.reservations add column if not exists guest_name text;
+alter table public.reservations add column if not exists guest_email text;
+alter table public.reservations add column if not exists guest_phone text;
+-- Phase 15: which saved vehicle (if any) this reservation was for.
+alter table public.reservations add column if not exists vehicle_id uuid references public.vehicles(id) on delete set null;
+alter table public.reservations drop constraint if exists reservations_user_id_or_guest_check;
+alter table public.reservations add constraint reservations_user_id_or_guest_check
+  check (user_id is not null or guest_email is not null);
 create index if not exists reservations_user_idx on public.reservations(user_id);
 create index if not exists reservations_lot_idx on public.reservations(lot_id);
 create index if not exists reservations_status_idx on public.reservations(status);
+
+-- Phase 8: payment tracking. amount/currency/payment_reference are set when a
+-- 'held' reservation moves to 'awaiting_payment' (see mark_awaiting_payment
+-- below); payment_expires_at is a separate, shorter-lived timeout from
+-- hold_expires_at so an abandoned Flutterwave checkout doesn't hold a space
+-- indefinitely (see the release_expired_holds extension below).
+alter table public.reservations add column if not exists amount numeric;
+alter table public.reservations add column if not exists currency text not null default 'NGN';
+alter table public.reservations add column if not exists payment_reference text;
+alter table public.reservations add column if not exists payment_status text not null default 'unpaid'
+  check (payment_status in ('unpaid','pending','paid','refunded','failed'));
+alter table public.reservations add column if not exists payment_expires_at timestamptz;
+create index if not exists reservations_payment_reference_idx on public.reservations(payment_reference);
 
 alter table public.reservations enable row level security;
 create policy "users can read their own reservations"
@@ -192,12 +365,25 @@ create policy "users can read their own reservations"
 -- inserts the reservation row, so two simultaneous requests for the last
 -- space can't both succeed. Runs as the function owner (security definer)
 -- with a fixed search_path so it can't be tricked by a session-local one.
+--
+-- Phase 11 added 3 trailing guest_* params, Phase 15 added p_vehicle_id.
+-- CREATE OR REPLACE only replaces a function with the exact same argument
+-- *types* — a changed parameter list creates a second overload instead,
+-- which can make PostgREST's named-parameter RPC calls ambiguous. Drop
+-- every prior signature first so re-running this on an existing project
+-- ends up with just one version.
+drop function if exists public.create_reservation_hold(uuid, uuid, timestamptz, timestamptz, integer);
+drop function if exists public.create_reservation_hold(uuid, uuid, timestamptz, timestamptz, integer, text, text, text);
 create or replace function public.create_reservation_hold(
   p_lot_id uuid,
   p_user_id uuid,
   p_start_time timestamptz,
   p_end_time timestamptz,
-  p_hold_minutes integer default 10
+  p_hold_minutes integer default 10,
+  p_guest_name text default null,
+  p_guest_email text default null,
+  p_guest_phone text default null,
+  p_vehicle_id uuid default null
 ) returns public.reservations
 language plpgsql
 security definer
@@ -209,6 +395,12 @@ declare
 begin
   if p_end_time <= p_start_time then
     raise exception 'end_time must be after start_time' using errcode = 'P0001';
+  end if;
+  if p_user_id is null and p_guest_email is null then
+    raise exception 'A signed-in user or a guest email is required' using errcode = 'P0001';
+  end if;
+  if p_vehicle_id is not null and not exists (select 1 from public.vehicles where id = p_vehicle_id and user_id = p_user_id) then
+    raise exception 'Vehicle not found' using errcode = 'P0002';
   end if;
 
   select * into v_lot from public.parking_lots where id = p_lot_id for update;
@@ -226,8 +418,8 @@ begin
     set available_spaces = available_spaces - 1, updated_at = now()
     where id = p_lot_id;
 
-  insert into public.reservations (lot_id, user_id, start_time, end_time, status, hold_expires_at)
-  values (p_lot_id, p_user_id, p_start_time, p_end_time, 'held', now() + (p_hold_minutes || ' minutes')::interval)
+  insert into public.reservations (lot_id, user_id, guest_name, guest_email, guest_phone, vehicle_id, start_time, end_time, status, hold_expires_at)
+  values (p_lot_id, p_user_id, p_guest_name, p_guest_email, p_guest_phone, p_vehicle_id, p_start_time, p_end_time, 'held', now() + (p_hold_minutes || ' minutes')::interval)
   returning * into v_reservation;
 
   return v_reservation;
@@ -235,8 +427,12 @@ end;
 $$;
 
 -- Confirms a held reservation (clears the expiry so the cron sweep leaves it
--- alone). Scoped to the owning user unless p_user_id is null (used by admin
--- tooling later, not the current API).
+-- alone). Scoped to the owning user unless p_user_id is null — that bypass
+-- is only ever invoked from trusted server-side code (immediately after
+-- creating a guest hold in the same request, never from client input), not
+-- exposed as something a caller can pass. IS DISTINCT FROM (not <>) so a
+-- guest reservation (user_id null) can't be "matched" by an attacker
+-- passing a real p_user_id, since NULL <> anything is NULL/skipped, not true.
 create or replace function public.confirm_reservation(
   p_reservation_id uuid,
   p_user_id uuid
@@ -252,7 +448,7 @@ begin
   if not found then
     raise exception 'Reservation not found' using errcode = 'P0002';
   end if;
-  if v_reservation.user_id <> p_user_id then
+  if p_user_id is not null and v_reservation.user_id is distinct from p_user_id then
     raise exception 'Not your reservation' using errcode = 'P0001';
   end if;
   if v_reservation.status <> 'held' then
@@ -270,6 +466,10 @@ $$;
 
 -- Releases a hold or confirmed reservation back to available_spaces.
 -- p_user_id null bypasses the ownership check (used by the expiry sweep).
+-- IS DISTINCT FROM (not <>): a guest reservation's user_id is null, and
+-- NULL <> anything evaluates to NULL (skipped by plpgsql's IF, not raised)
+-- — which would otherwise let any signed-in caller cancel any guest's
+-- reservation. IS DISTINCT FROM treats null as a real, comparable value.
 create or replace function public.release_reservation(
   p_reservation_id uuid,
   p_user_id uuid default null
@@ -285,7 +485,7 @@ begin
   if not found then
     raise exception 'Reservation not found' using errcode = 'P0002';
   end if;
-  if p_user_id is not null and v_reservation.user_id <> p_user_id then
+  if p_user_id is not null and v_reservation.user_id is distinct from p_user_id then
     raise exception 'Not your reservation' using errcode = 'P0001';
   end if;
   if v_reservation.status not in ('held', 'awaiting_payment', 'confirmed') then
@@ -305,8 +505,9 @@ begin
 end;
 $$;
 
--- Sweeps expired holds back into available_spaces. Called on a schedule by
--- api/cron/release-holds.js (Vercel Cron), not exposed to end users.
+-- Sweeps expired holds AND abandoned payment attempts back into
+-- available_spaces. Called on a schedule by api/cron/release-holds.js
+-- (Vercel Cron), not exposed to end users.
 create or replace function public.release_expired_holds()
 returns integer
 language plpgsql
@@ -326,7 +527,110 @@ begin
     update public.reservations set status = 'cancelled', updated_at = now() where id = v_row.id;
     v_count := v_count + 1;
   end loop;
+
+  for v_row in
+    select id, lot_id from public.reservations
+    where status = 'awaiting_payment' and payment_expires_at < now()
+    for update skip locked
+  loop
+    update public.parking_lots set available_spaces = least(capacity, available_spaces + 1), updated_at = now() where id = v_row.lot_id;
+    update public.reservations set status = 'cancelled', payment_status = 'failed', updated_at = now() where id = v_row.id;
+    v_count := v_count + 1;
+  end loop;
+
   return v_count;
+end;
+$$;
+
+-- Phase 8: Flutterwave payments. Moves a held reservation into
+-- 'awaiting_payment' with its own (shorter) expiry, independent of
+-- hold_expires_at, so an abandoned checkout doesn't hold a space forever.
+-- Same p_user_id-null-bypass-for-trusted-server-code pattern as
+-- confirm_reservation above (guest checkout paying immediately).
+create or replace function public.mark_awaiting_payment(
+  p_reservation_id uuid,
+  p_user_id uuid,
+  p_amount numeric,
+  p_currency text,
+  p_reference text,
+  p_payment_minutes integer default 15
+) returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_reservation public.reservations;
+begin
+  select * into v_reservation from public.reservations where id = p_reservation_id for update;
+  if not found then
+    raise exception 'Reservation not found' using errcode = 'P0002';
+  end if;
+  if p_user_id is not null and v_reservation.user_id is distinct from p_user_id then
+    raise exception 'Not your reservation' using errcode = 'P0001';
+  end if;
+  if v_reservation.status <> 'held' then
+    raise exception 'Only a held reservation can start payment' using errcode = 'P0001';
+  end if;
+
+  update public.reservations
+    set status = 'awaiting_payment',
+        payment_status = 'pending',
+        amount = p_amount,
+        currency = p_currency,
+        payment_reference = p_reference,
+        payment_expires_at = now() + (p_payment_minutes || ' minutes')::interval,
+        updated_at = now()
+    where id = p_reservation_id
+    returning * into v_reservation;
+
+  return v_reservation;
+end;
+$$;
+
+-- Finalizes a payment attempt. No p_user_id check here by design: this is
+-- called from the Flutterwave webhook handler (api/webhooks/flutterwave.js),
+-- which has already independently re-verified the transaction against
+-- Flutterwave's API before calling this — never trust the webhook payload
+-- alone for a financial decision, but by the time this function runs, that
+-- verification has already happened server-side.
+create or replace function public.finalize_payment(
+  p_reservation_id uuid,
+  p_reference text,
+  p_success boolean
+) returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_reservation public.reservations;
+begin
+  select * into v_reservation from public.reservations where id = p_reservation_id for update;
+  if not found then
+    raise exception 'Reservation not found' using errcode = 'P0002';
+  end if;
+  if v_reservation.status <> 'awaiting_payment' then
+    -- Already finalized (webhook retry) or no longer awaiting payment — no-op.
+    return v_reservation;
+  end if;
+  if v_reservation.payment_reference is distinct from p_reference then
+    raise exception 'Payment reference mismatch' using errcode = 'P0001';
+  end if;
+
+  if p_success then
+    update public.reservations
+      set status = 'confirmed', payment_status = 'paid', hold_expires_at = null, payment_expires_at = null, updated_at = now()
+      where id = p_reservation_id
+      returning * into v_reservation;
+  else
+    update public.reservations
+      set status = 'held', payment_status = 'failed', updated_at = now()
+      where id = p_reservation_id
+      returning * into v_reservation;
+  end if;
+
+  return v_reservation;
 end;
 $$;
 
@@ -340,10 +644,12 @@ create table if not exists public.reviews (
   rating numeric not null check (rating >= 1 and rating <= 5),
   comment text not null default '',
   photo_urls text[] not null default '{}',
+  report_count integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (lot_id, user_id)
 );
+alter table public.reviews add column if not exists report_count integer not null default 0;
 create index if not exists reviews_lot_idx on public.reviews(lot_id);
 
 alter table public.reviews enable row level security;
@@ -375,6 +681,29 @@ drop trigger if exists reviews_recompute_rating on public.reviews;
 create trigger reviews_recompute_rating
   after insert or update or delete on public.reviews
   for each row execute function public.recompute_lot_rating();
+
+-- Phase 12: lightweight review moderation. Any signed-in user can flag a
+-- review; there's no per-user once-only enforcement here (a simple counter,
+-- not fraud-hardened) — admins triage by report_count, not by trusting a
+-- single report as proof.
+create or replace function public.report_review(p_review_id uuid)
+returns public.reviews
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_review public.reviews;
+begin
+  update public.reviews set report_count = report_count + 1, updated_at = now()
+    where id = p_review_id
+    returning * into v_review;
+  if not found then
+    raise exception 'Review not found' using errcode = 'P0002';
+  end if;
+  return v_review;
+end;
+$$;
 
 -- Phase 5: real photo storage instead of the data: URI placeholder in
 -- api/uploads/photo.js. Public bucket (lot photos are meant to be visible
